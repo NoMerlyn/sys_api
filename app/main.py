@@ -30,6 +30,10 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    import asyncio
+
+    from app.infrastructure.messaging.consumer import run_invoice_consumer
+
     settings = get_settings()
     logger.info("Starting sys_api (env=%s)", settings.env)
 
@@ -37,9 +41,16 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     await get_channel_pool(settings.rabbitmq_url)
     await declare_topology()
 
+    consumer_task = asyncio.create_task(
+        run_invoice_consumer(settings.rabbitmq_url),
+        name="invoice-broker-consumer",
+    )
+    logger.info("invoice-broker-consumer task scheduled")
+
     try:
         yield
     finally:
+        consumer_task.cancel()
         await shutdown_channel_pool()
         await dispose_engine()
         logger.info("sys_api shutdown complete")
@@ -102,27 +113,6 @@ def create_app() -> FastAPI:
 
     app.include_router(invoices_router.router, prefix="/api")
     app.include_router(invoice_pdf_router.router, prefix="/api")
-
-    # Background consumer task (started in lifespan)
-    from app.infrastructure.messaging.consumer import run_invoice_consumer
-
-    app.state.consumer_task = None
-
-    @app.on_event("startup")
-    async def _start_consumer() -> None:  # type: ignore[no-untyped-def]
-        import asyncio
-
-        from app.config import get_settings
-
-        app.state.consumer_task = asyncio.create_task(
-            run_invoice_consumer(get_settings().rabbitmq_url)
-        )
-
-    @app.on_event("shutdown")
-    async def _stop_consumer() -> None:  # type: ignore[no-untyped-def]
-        task = app.state.consumer_task
-        if task is not None:
-            task.cancel()
 
     return app
 

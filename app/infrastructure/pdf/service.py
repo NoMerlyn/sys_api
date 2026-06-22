@@ -90,7 +90,7 @@ class PdfService:
         rows: list[list[str]] = [
             ["Producto", "Cant.", "Precio", "Subtotal"],
         ]
-        for d in invoice.details or []:
+        for d in invoice.items or []:
             rows.append(
                 [
                     d.product_name or "-",

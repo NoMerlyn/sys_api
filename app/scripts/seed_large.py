@@ -36,20 +36,14 @@ BATCH = 5_000
 async def _truncate_stress(session) -> None:
     # Delete only the stress rows (those whose name starts with "Stress").
     await session.execute(
-        text("DELETE FROM invoice_detail_taxes WHERE detail_id IN (SELECT id FROM invoice_details WHERE product_name LIKE 'Stress:%')")
+        text(
+            "DELETE FROM invoice_detail_taxes WHERE detail_id IN (SELECT id FROM invoice_details WHERE product_name LIKE 'Stress:%')"
+        )
     )
-    await session.execute(
-        text("DELETE FROM invoice_details WHERE product_name LIKE 'Stress:%'")
-    )
-    await session.execute(
-        text("DELETE FROM invoices WHERE invoice_number LIKE 'STRESS-%'")
-    )
-    await session.execute(
-        text("DELETE FROM clients WHERE first_name LIKE 'Stress%'")
-    )
-    await session.execute(
-        text("DELETE FROM products WHERE name LIKE 'Stress%'")
-    )
+    await session.execute(text("DELETE FROM invoice_details WHERE product_name LIKE 'Stress:%'"))
+    await session.execute(text("DELETE FROM invoices WHERE invoice_number LIKE 'STRESS-%'"))
+    await session.execute(text("DELETE FROM clients WHERE first_name LIKE 'Stress%'"))
+    await session.execute(text("DELETE FROM products WHERE name LIKE 'Stress%'"))
     await session.commit()
 
 
@@ -103,12 +97,8 @@ async def _bulk_insert_clients(session, rng: random.Random) -> float:
 async def _bulk_insert_invoices(session, rng: random.Random) -> float:
     t0 = time.time()
     # Pick random client and product ids; need a count of each first.
-    client_count = (
-        await session.execute(text("SELECT COUNT(*) FROM clients"))
-    ).scalar_one()
-    product_count = (
-        await session.execute(text("SELECT COUNT(*) FROM products"))
-    ).scalar_one()
+    client_count = (await session.execute(text("SELECT COUNT(*) FROM clients"))).scalar_one()
+    product_count = (await session.execute(text("SELECT COUNT(*) FROM products"))).scalar_one()
     if client_count == 0 or product_count == 0:
         print("Skipping invoices: no clients or products yet.")
         return 0.0
@@ -162,7 +152,9 @@ async def main() -> None:
     async with engine.begin() as conn:
         await _truncate_stress(conn)
 
-    print(f"Seeding {COUNT_CLIENTS} clients + {COUNT_PRODUCTS} products + {COUNT_INVOICES} invoices")
+    print(
+        f"Seeding {COUNT_CLIENTS} clients + {COUNT_PRODUCTS} products + {COUNT_INVOICES} invoices"
+    )
 
     async with engine.begin() as conn:
         t = await _bulk_insert_products(conn, rng)

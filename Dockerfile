@@ -13,12 +13,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python deps separately for better layer caching
+# Copy source first so editable install can find the `app/` package
+COPY app ./app
+COPY alembic ./alembic
 COPY pyproject.toml ./
 RUN pip install --upgrade pip && pip install -e ".[dev]"
 
-# Copy source
-COPY app ./app
-COPY alembic ./alembic
+# Copy remaining source
 COPY alembic.ini ./
 COPY tests ./tests
 
