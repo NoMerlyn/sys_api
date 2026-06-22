@@ -1,0 +1,18 @@
+"""IErrorLogRepository interface."""
+
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+from collections.abc import Sequence
+
+from app.core.pagination import Page
+
+
+class IErrorLogRepository(ABC):
+    @abstractmethod
+    async def find_all(
+        self, page: Page, search: str | None = None
+    ) -> tuple[Sequence[object], int]: ...
+
+    @abstractmethod
+    async def create(self, log: object) -> object: ...
