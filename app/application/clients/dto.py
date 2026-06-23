@@ -2,22 +2,36 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
+
+from app.domain.value_objects.cedula import Cedula
 
 
-class CreateClientDto(BaseModel):
+class _CedulaMixin(BaseModel):
+    cedula: str | None = Field(default=None, max_length=20)
+
+    @field_validator("cedula")
+    @classmethod
+    def _validate_cedula(cls, value: str | None) -> str | None:
+        if value is None or value == "":
+            return None
+        # Strip whitespace; tolerate "1712345678 " or "171234567-8" etc.
+        cleaned = value.strip().replace(" ", "").replace("-", "")
+        Cedula(cleaned)  # raises BusinessException on failure
+        return cleaned
+
+
+class CreateClientDto(_CedulaMixin):
     first_name: str | None = Field(default=None, max_length=255)
     last_name: str | None = Field(default=None, max_length=255)
-    cedula: str | None = Field(default=None, max_length=20)
     phone: str | None = Field(default=None, max_length=50)
     address: str | None = Field(default=None, max_length=255)
     email: EmailStr | None = None
 
 
-class UpdateClientDto(BaseModel):
+class UpdateClientDto(_CedulaMixin):
     first_name: str | None = Field(default=None, max_length=255)
     last_name: str | None = Field(default=None, max_length=255)
-    cedula: str | None = Field(default=None, max_length=20)
     phone: str | None = Field(default=None, max_length=50)
     address: str | None = Field(default=None, max_length=255)
     email: EmailStr | None = None
