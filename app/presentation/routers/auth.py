@@ -21,6 +21,7 @@ from app.application.auth.dto import (
 )
 from app.application.common.interfaces.user_repository import IUserRepository
 from app.application.common.uow import uow
+from app.core.rate_limit import limiter
 from app.presentation.deps import CurrentUserDep, require_role
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -37,7 +38,8 @@ async def get_user_repo() -> IUserRepository:
 
 
 @router.post("/login", response_model=AuthResponseDto)
-async def login(payload: LoginDto, request: Request) -> AuthResponseDto:
+@limiter.limit("5/minute")
+async def login(request: Request, payload: LoginDto) -> AuthResponseDto:
     ip = request.client.host if request.client else None
     async with uow() as session:
         from app.infrastructure.repositories.user_repository import SqlUserRepository

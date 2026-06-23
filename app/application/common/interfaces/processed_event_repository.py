@@ -1,7 +1,6 @@
 """IProcessedEventRepository interface (broker idempotency)."""
 
 from __future__ import annotations
-from typing import Any
 
 import uuid
 from abc import ABC, abstractmethod

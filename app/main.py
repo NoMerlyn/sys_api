@@ -10,6 +10,8 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.config import get_settings
 from app.core.exceptions import (
@@ -18,6 +20,7 @@ from app.core.exceptions import (
     app_error_handler,
     business_exception_handler,
 )
+from app.core.rate_limit import limiter
 from app.infrastructure.db.session import dispose_engine, init_engine
 from app.infrastructure.messaging.rabbit import (
     declare_topology,
@@ -73,9 +76,21 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.state.limiter = limiter
+    app.add_middleware(SlowAPIMiddleware)
 
     app.add_exception_handler(AppError, app_error_handler)  # type: ignore[arg-type]
     app.add_exception_handler(BusinessError, business_exception_handler)  # type: ignore[arg-type]
+
+    @app.exception_handler(RateLimitExceeded)
+    async def _rate_limit_handler(_: Request, exc: RateLimitExceeded) -> JSONResponse:
+        return JSONResponse(
+            status_code=429,
+            content={
+                "code": "RATE_LIMIT_EXCEEDED",
+                "message": f"Demasiadas solicitudes. Límite: {exc.detail}",
+            },
+        )
 
     @app.exception_handler(RequestValidationError)
     async def _validation_error_handler(_: Request, exc: RequestValidationError) -> JSONResponse:
