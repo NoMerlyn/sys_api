@@ -22,7 +22,8 @@ import random
 import time
 from decimal import Decimal
 
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
+from sqlalchemy.dialects.postgresql import ENUM as SAEnum
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.config import get_settings
@@ -96,11 +97,18 @@ async def _bulk_insert_clients(session, rng: random.Random) -> float:
 
 async def _bulk_insert_invoices(session, rng: random.Random) -> float:
     t0 = time.time()
-    # Pick random client and product ids; need a count of each first.
-    client_count = (await session.execute(text("SELECT COUNT(*) FROM clients"))).scalar_one()
-    product_count = (await session.execute(text("SELECT COUNT(*) FROM products"))).scalar_one()
-    if client_count == 0 or product_count == 0:
-        print("Skipping invoices: no clients or products yet.")
+    # Pull a sample of real client and user ids. We can't just use randint(1, count)
+    # because the autoincrement sequence has gaps from failed batches.
+    real_client_ids = [
+        row[0]
+        for row in (await session.execute(text("SELECT id FROM clients"))).all()
+    ]
+    real_user_ids = [
+        row[0]
+        for row in (await session.execute(text("SELECT id FROM users"))).all()
+    ]
+    if not real_client_ids or not real_user_ids:
+        print("Skipping invoices: no clients or users yet.")
         return 0.0
 
     for i in range(0, COUNT_INVOICES, BATCH):
@@ -108,8 +116,8 @@ async def _bulk_insert_invoices(session, rng: random.Random) -> float:
         for j in range(BATCH):
             if i + j >= COUNT_INVOICES:
                 break
-            client_id = rng.randint(1, client_count)
-            seller_id = rng.randint(1, max(1, client_count // 1000))  # dummy
+            client_id = rng.choice(real_client_ids)
+            seller_id = rng.choice(real_user_ids)
             invoice_number = f"STRESS-{(i + j):08d}"
             subtotal = Decimal(rng.randint(500, 500_00)) / Decimal("100")
             tax_total = (subtotal * Decimal("15")) / Decimal("100")
@@ -123,6 +131,7 @@ async def _bulk_insert_invoices(session, rng: random.Random) -> float:
                     "tax_total_snapshot": tax_total,
                     "total_snapshot": total,
                     "status": "CONFIRMED",
+                    "payment_method": "CASH",
                     "client_name_snapshot": f"Stress client {client_id}",
                     "seller_name_snapshot": f"Seller {seller_id}",
                 }
@@ -132,11 +141,31 @@ async def _bulk_insert_invoices(session, rng: random.Random) -> float:
                 text(
                     "INSERT INTO invoices "
                     "(client_id, user_id, invoice_number, subtotal_snapshot, "
-                    " tax_total_snapshot, total_snapshot, status, "
+                    " tax_total_snapshot, total_snapshot, status, payment_method, "
                     " client_name_snapshot, seller_name_snapshot, is_active, version) "
                     "VALUES (:client_id, :user_id, :invoice_number, :subtotal_snapshot, "
-                    " :tax_total_snapshot, :total_snapshot, :status::invoice_status, "
+                    " :tax_total_snapshot, :total_snapshot, CAST(:status AS invoice_status), "
+                    " CAST(:payment_method AS payment_method), "
                     " :client_name_snapshot, :seller_name_snapshot, true, 0)"
+                ).bindparams(
+                    bindparam(
+                        "status",
+                        value="CONFIRMED",
+                        type_=SAEnum(
+                            "invoice_status",
+                            name="invoice_status",
+                            create_type=False,
+                        ),
+                    ),
+                    bindparam(
+                        "payment_method",
+                        value="CASH",
+                        type_=SAEnum(
+                            "payment_method",
+                            name="payment_method",
+                            create_type=False,
+                        ),
+                    ),
                 ),
                 batch,
             )
