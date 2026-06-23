@@ -5,5 +5,5 @@ from __future__ import annotations
 import enum
 
 
-class PaymentMethod(str, enum.Enum):
+class PaymentMethod(enum.StrEnum):
     CASH = "CASH"

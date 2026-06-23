@@ -15,7 +15,7 @@ from __future__ import annotations
 import enum
 
 
-class InvoiceStatus(str, enum.Enum):
+class InvoiceStatus(enum.StrEnum):
     DRAFT = "DRAFT"
     PENDING_VALIDATION = "PENDING_VALIDATION"
     VALIDATED = "VALIDATED"

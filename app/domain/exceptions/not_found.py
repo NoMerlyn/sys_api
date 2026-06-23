@@ -1,5 +1,5 @@
-"""Convenience re-export for the NotFoundException class."""
+"""Convenience re-export for the NotFoundError class."""
 
-from app.core.exceptions import NotFoundException
+from app.core.exceptions import NotFoundError
 
-__all__ = ["NotFoundException"]
+__all__ = ["NotFoundError"]

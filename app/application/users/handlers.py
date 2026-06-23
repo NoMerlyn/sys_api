@@ -16,7 +16,7 @@ from app.application.users.dto import (
     UpdateUserDto,
     UserResponseDto,
 )
-from app.core.exceptions import BusinessException, NotFoundException
+from app.core.exceptions import BusinessError, NotFoundError
 from app.core.pagination import Page
 from app.core.security import hash_password
 
@@ -65,7 +65,7 @@ class GetUserHandler:
             users = self._users.__class__(session)
             user = await users.find_by_id(cmd.user_id)
             if user is None:
-                raise NotFoundException(f"Usuario {cmd.user_id} no encontrado")
+                raise NotFoundError(f"Usuario {cmd.user_id} no encontrado")
             return _to_user_dto(user)
 
 
@@ -82,13 +82,12 @@ class CreateUserHandler:
     async def handle(self, cmd: CreateUserCommand) -> int:
         async with uow() as session:
             users = self._users.__class__(session)
-            roles = self._roles.__class__(session)
             if await users.find_by_email(cmd.dto.email) is not None:
-                raise BusinessException(
+                raise BusinessError(
                     f"Email duplicado: {cmd.dto.email}", details={"field": "email"}
                 )
             if await users.find_by_username(cmd.dto.username) is not None:
-                raise BusinessException(
+                raise BusinessError(
                     f"Username duplicado: {cmd.dto.username}",
                     details={"field": "username"},
                 )
@@ -130,7 +129,7 @@ class UpdateUserHandler:
             users = self._users.__class__(session)
             user = await users.find_by_id(cmd.user_id)
             if user is None:
-                raise NotFoundException(f"Usuario {cmd.user_id} no encontrado")
+                raise NotFoundError(f"Usuario {cmd.user_id} no encontrado")
             if cmd.dto.name is not None:
                 user.name = cmd.dto.name
             if cmd.dto.last_name is not None:
@@ -176,7 +175,7 @@ class AssignRolesHandler:
             users = self._users.__class__(session)
             user = await users.find_by_id(cmd.user_id)
             if user is None:
-                raise NotFoundException(f"Usuario {cmd.user_id} no encontrado")
+                raise NotFoundError(f"Usuario {cmd.user_id} no encontrado")
             from sqlalchemy import delete
 
             from app.infrastructure.db.models.user_role import UserRole
@@ -219,7 +218,7 @@ class GetUserRolesHandler:
             users = self._users.__class__(session)
             user = await users.find_by_id(cmd.user_id)
             if user is None:
-                raise NotFoundException(f"Usuario {cmd.user_id} no encontrado")
+                raise NotFoundError(f"Usuario {cmd.user_id} no encontrado")
             return [
                 RoleResponseDto(id=r.id, name=r.name, description=r.description)
                 for r in (user.roles or [])

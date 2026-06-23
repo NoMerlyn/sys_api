@@ -1,5 +1,5 @@
-"""Convenience re-export for the BusinessException class."""
+"""Convenience re-export for the BusinessError class."""
 
-from app.core.exceptions import BusinessException
+from app.core.exceptions import BusinessError
 
-__all__ = ["BusinessException"]
+__all__ = ["BusinessError"]

@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from app.infrastructure.db.models.user import User
 
 
-class InvoiceStatus(str, enum.Enum):
+class InvoiceStatus(enum.StrEnum):
     DRAFT = "DRAFT"
     PENDING_VALIDATION = "PENDING_VALIDATION"
     VALIDATED = "VALIDATED"
@@ -41,7 +41,7 @@ class InvoiceStatus(str, enum.Enum):
     CANCELLED = "CANCELLED"
 
 
-class PaymentMethod(str, enum.Enum):
+class PaymentMethod(enum.StrEnum):
     CASH = "CASH"
 
 

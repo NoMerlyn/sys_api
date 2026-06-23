@@ -5,6 +5,6 @@ imports from here; the infrastructure layer adapts to interfaces defined
 in `app.application.common.interfaces`.
 """
 
-from app.core.exceptions import BusinessException, NotFoundException
+from app.core.exceptions import BusinessError, NotFoundError
 
-__all__ = ["BusinessException", "NotFoundException"]
+__all__ = ["BusinessError", "NotFoundError"]

@@ -23,7 +23,7 @@ import time
 from decimal import Decimal
 
 from sqlalchemy import bindparam, text
-from sqlalchemy.dialects.postgresql import ENUM as SAEnum
+from sqlalchemy.dialects.postgresql import ENUM
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.config import get_settings
@@ -151,7 +151,7 @@ async def _bulk_insert_invoices(session, rng: random.Random) -> float:
                     bindparam(
                         "status",
                         value="CONFIRMED",
-                        type_=SAEnum(
+                        type_=ENUM(
                             "invoice_status",
                             name="invoice_status",
                             create_type=False,
@@ -160,7 +160,7 @@ async def _bulk_insert_invoices(session, rng: random.Random) -> float:
                     bindparam(
                         "payment_method",
                         value="CASH",
-                        type_=SAEnum(
+                        type_=ENUM(
                             "payment_method",
                             name="payment_method",
                             create_type=False,

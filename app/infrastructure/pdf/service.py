@@ -52,7 +52,6 @@ class PdfService:
         styles = getSampleStyleSheet()
         h1 = styles["Title"]
         small = ParagraphStyle("small", parent=styles["Normal"], fontSize=9)
-        bold = ParagraphStyle("bold", parent=styles["Normal"], fontName="Helvetica-Bold")
 
         story: list[Any] = []
         story.append(Paragraph(f"Factura {invoice.invoice_number or invoice.id}", h1))

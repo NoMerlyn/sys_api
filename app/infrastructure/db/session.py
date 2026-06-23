@@ -10,6 +10,7 @@ Unit of Work boundary.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, contextmanager
@@ -101,10 +102,8 @@ def _is_async_factory(factory) -> bool:
     finally:
         close = getattr(probe, "close", None)
         if callable(close):
-            try:
+            with contextlib.suppress(Exception):
                 close()
-            except Exception:
-                pass
 
 
 @asynccontextmanager

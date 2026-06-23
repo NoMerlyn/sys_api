@@ -2,9 +2,9 @@
 
 Two-tier model:
 - `AppError` is the base for every exception we own.
-- `BusinessException` represents a rule violation (400/409).
-- `NotFoundException` represents a missing entity (404).
-- `AuthException` is reserved for L3 (auth router).
+- `BusinessError` represents a rule violation (400/409).
+- `NotFoundError` represents a missing entity (404).
+- `AuthError` is reserved for L3 (auth router).
 """
 
 from __future__ import annotations
@@ -37,42 +37,42 @@ class AppError(Exception):
         self.details = details or {}
 
 
-class BusinessException(AppError):
+class BusinessError(AppError):
     """A business rule was violated (validation, conflict, etc.)."""
 
     code = "BUSINESS_RULE_VIOLATION"
     http_status = 400
 
 
-class NotFoundException(AppError):
+class NotFoundError(AppError):
     """The requested entity was not found."""
 
     code = "NOT_FOUND"
     http_status = 404
 
 
-class AuthException(AppError):
+class AuthError(AppError):
     """Authentication failed or missing."""
 
     code = "UNAUTHORIZED"
     http_status = 401
 
 
-class ForbiddenException(AppError):
+class ForbiddenError(AppError):
     """The authenticated user lacks the required role."""
 
     code = "FORBIDDEN"
     http_status = 403
 
 
-class ConflictException(AppError):
+class ConflictError(AppError):
     """A state-machine or uniqueness conflict."""
 
     code = "CONFLICT"
     http_status = 409
 
 
-class AccountBlockedException(AppError):
+class AccountBlockedError(AppError):
     """The user account is blocked after too many failed logins."""
 
     code = "ACCOUNT_BLOCKED"
@@ -91,8 +91,8 @@ async def app_error_handler(_: Request, exc: AppError) -> JSONResponse:
     )
 
 
-async def business_exception_handler(_: Request, exc: BusinessException) -> JSONResponse:
-    logger.info("BusinessException: %s — %s", exc.code, exc.message)
+async def business_exception_handler(_: Request, exc: BusinessError) -> JSONResponse:
+    logger.info("BusinessError: %s — %s", exc.code, exc.message)
     return JSONResponse(
         status_code=exc.http_status,
         content={
@@ -106,4 +106,4 @@ async def business_exception_handler(_: Request, exc: BusinessException) -> JSON
 def register_exception_handlers(app: FastAPI) -> None:
     """Alternative manual registration if create_app is bypassed."""
     app.add_exception_handler(AppError, app_error_handler)
-    app.add_exception_handler(BusinessException, business_exception_handler)
+    app.add_exception_handler(BusinessError, business_exception_handler)

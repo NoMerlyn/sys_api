@@ -12,6 +12,7 @@ All money values are stored as `Numeric(12, 2)` and rounded to 2dp at write.
 
 from __future__ import annotations
 
+import contextlib
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
@@ -31,7 +32,7 @@ from app.application.invoices.dto import (
     InvoiceResponseDto,
     UpdateInvoiceDto,
 )
-from app.core.exceptions import BusinessException, NotFoundException
+from app.core.exceptions import BusinessError, NotFoundError
 from app.core.pagination import Page
 from app.domain.value_objects.invoice_status import (
     InvoiceStatus,
@@ -123,7 +124,7 @@ class CreateInvoiceHandler:
             seen: set[int] = set()
             for it in cmd.dto.items:
                 if it.product_id in seen:
-                    raise BusinessException(
+                    raise BusinessError(
                         f"Producto {it.product_id} duplicado en la factura",
                         details={"product_id": it.product_id},
                     )
@@ -141,14 +142,14 @@ class CreateInvoiceHandler:
             for it in cmd.dto.items:
                 product = await products.find_by_id(it.product_id)
                 if product is None:
-                    raise NotFoundException(f"Producto {it.product_id} no existe")
+                    raise NotFoundError(f"Producto {it.product_id} no existe")
                 if not product.is_active:
-                    raise BusinessException(
+                    raise BusinessError(
                         f"Producto {it.product_id} no está activo",
                         details={"product_id": it.product_id},
                     )
                 if (product.stock or 0) < it.quantity:
-                    raise BusinessException(
+                    raise BusinessError(
                         f"Stock insuficiente para producto {it.product_id}",
                         details={
                             "product_id": it.product_id,
@@ -170,7 +171,7 @@ class CreateInvoiceHandler:
                 for tax_id in chosen_tax_ids:
                     tax = await taxes_repo.find_by_id(tax_id)
                     if tax is None:
-                        raise NotFoundException(f"Impuesto {tax_id} no existe")
+                        raise NotFoundError(f"Impuesto {tax_id} no existe")
                     rate = tax.current_rate or Decimal("0")
                     line_tax_amount = _q(line_subtotal * rate / Decimal("100"))
                     tax_total = _q(tax_total + line_tax_amount)
@@ -197,7 +198,7 @@ class CreateInvoiceHandler:
             if cmd.dto.client_id is not None:
                 c = await clients.find_by_id(cmd.dto.client_id)
                 if c is None:
-                    raise NotFoundException(f"Cliente {cmd.dto.client_id} no existe")
+                    raise NotFoundError(f"Cliente {cmd.dto.client_id} no existe")
                 client_name = (
                     f"{(c.first_name or '').strip()} {(c.last_name or '').strip()}".strip() or None
                 )
@@ -205,7 +206,7 @@ class CreateInvoiceHandler:
 
             seller = await users.find_by_id(cmd.seller_id)
             if seller is None:
-                raise NotFoundException(f"Vendedor {cmd.seller_id} no existe")
+                raise NotFoundError(f"Vendedor {cmd.seller_id} no existe")
             seller_name = (
                 f"{(seller.name or '').strip()} {(seller.last_name or '').strip()}".strip()
             )
@@ -297,10 +298,8 @@ class CreateInvoiceHandler:
                 pass
             finally:
                 if channel is not None:
-                    try:
+                    with contextlib.suppress(Exception):
                         await channel.close()
-                    except Exception:
-                        pass
 
             return invoice.id
 
@@ -332,12 +331,11 @@ class UpdateInvoiceHandler:
         async with uow() as session:
             invoices = self._invoices.__class__(session)
             products = self._products.__class__(session)
-            clients = self._clients.__class__(session)
             inv = await invoices.find_by_id(cmd.invoice_id)
             if inv is None:
-                raise NotFoundException(f"Factura {cmd.invoice_id} no existe")
+                raise NotFoundError(f"Factura {cmd.invoice_id} no existe")
             if not can_transition(inv.status, InvoiceStatus.PENDING_VALIDATION):
-                raise BusinessException(
+                raise BusinessError(
                     f"Solo facturas en DRAFT pueden editarse (actual: {inv.status})"
                 )
             if cmd.dto.client_id is not None:
@@ -355,7 +353,7 @@ class UpdateInvoiceHandler:
                 for it in cmd.dto.items:
                     product = await products.find_by_id(it.product_id)
                     if product is None:
-                        raise NotFoundException(f"Producto {it.product_id} no existe")
+                        raise NotFoundError(f"Producto {it.product_id} no existe")
                     line_subtotal = _q((product.price or Decimal("0")) * Decimal(it.quantity))
                     subtotal = _q(subtotal + line_subtotal)
                     detail = InvoiceDetail(
@@ -372,7 +370,7 @@ class UpdateInvoiceHandler:
 
                         tax = await session.get(Tax, tax_id)
                         if tax is None:
-                            raise NotFoundException(f"Impuesto {tax_id} no existe")
+                            raise NotFoundError(f"Impuesto {tax_id} no existe")
                         line_tax_amount = _q(
                             line_subtotal * (tax.current_rate or Decimal("0")) / Decimal("100")
                         )
@@ -417,13 +415,13 @@ class ChangeInvoiceStatusHandler:
             moves = self._stock_movements.__class__(session)
             inv = await invoices.find_by_id(cmd.invoice_id)
             if inv is None:
-                raise NotFoundException(f"Factura {cmd.invoice_id} no existe")
+                raise NotFoundError(f"Factura {cmd.invoice_id} no existe")
             try:
                 target = InvoiceStatus(cmd.dto.status.upper())
             except ValueError as exc:
-                raise BusinessException(f"Estado inválido: {cmd.dto.status}") from exc
+                raise BusinessError(f"Estado inválido: {cmd.dto.status}") from exc
             if not can_transition(inv.status, target):
-                raise BusinessException(f"Transición no permitida: {inv.status} -> {target}")
+                raise BusinessError(f"Transición no permitida: {inv.status} -> {target}")
             # Cancellation restores stock.
             if target == InvoiceStatus.CANCELLED:
                 for d in inv.details or []:
@@ -495,7 +493,7 @@ class GetInvoiceHandler:
             invoices = self._invoices.__class__(session)
             inv = await invoices.find_by_id(cmd.invoice_id)
             if inv is None:
-                raise NotFoundException(f"Factura {cmd.invoice_id} no existe")
+                raise NotFoundError(f"Factura {cmd.invoice_id} no existe")
             return _to_dto(inv)
 
 
@@ -513,5 +511,5 @@ class GetInvoiceByNumberHandler:
             invoices = self._invoices.__class__(session)
             inv = await invoices.find_by_number(cmd.invoice_number)
             if inv is None:
-                raise NotFoundException(f"Factura {cmd.invoice_number} no existe")
+                raise NotFoundError(f"Factura {cmd.invoice_number} no existe")
             return _to_dto(inv)

@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.core.exceptions import BusinessException
+from app.core.exceptions import BusinessError
 
 # Coefficients applied to the first 9 digits, left to right.
 _COEFFICIENTS: tuple[int, ...] = (2, 1, 2, 1, 2, 1, 2, 1, 2)
@@ -37,7 +37,7 @@ def _is_valid_cedula(value: str) -> bool:
     digits = [int(c) for c in value]
     # First 9 digits are the body; 10th is the verifier.
     total = 0
-    for digit, coef in zip(digits[:9], _COEFFICIENTS):
+    for digit, coef in zip(digits[:9], _COEFFICIENTS, strict=True):
         product = digit * coef
         if product > 9:
             product -= 9
@@ -52,7 +52,7 @@ class Cedula:
 
     def __post_init__(self) -> None:
         if not _is_valid_cedula(self.value):
-            raise BusinessException(
+            raise BusinessError(
                 f"Cédula inválida: {self.value!r}",
                 details={"field": "cedula"},
             )

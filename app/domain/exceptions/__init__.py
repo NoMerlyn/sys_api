@@ -4,6 +4,6 @@ The implementations live in `app.core.exceptions` to keep the dependency
 graph flat (core has no upward dependency on domain).
 """
 
-from app.core.exceptions import BusinessException, NotFoundException
+from app.core.exceptions import BusinessError, NotFoundError
 
-__all__ = ["BusinessException", "NotFoundException"]
+__all__ = ["BusinessError", "NotFoundError"]

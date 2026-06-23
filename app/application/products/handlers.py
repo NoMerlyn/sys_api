@@ -12,7 +12,7 @@ from app.application.products.dto import (
     ProductResponseDto,
     UpdateProductDto,
 )
-from app.core.exceptions import NotFoundException
+from app.core.exceptions import NotFoundError
 from app.core.pagination import Page
 
 
@@ -74,7 +74,7 @@ class GetProductHandler:
             products = self._products.__class__(session)
             p = await products.find_by_id(cmd.product_id)
             if p is None:
-                raise NotFoundException(f"Producto {cmd.product_id} no encontrado")
+                raise NotFoundError(f"Producto {cmd.product_id} no encontrado")
             return _to_dto(p)
 
 
@@ -117,7 +117,7 @@ class UpdateProductHandler:
             products = self._products.__class__(session)
             p = await products.find_by_id(cmd.product_id)
             if p is None:
-                raise NotFoundException(f"Producto {cmd.product_id} no encontrado")
+                raise NotFoundError(f"Producto {cmd.product_id} no encontrado")
             if cmd.dto.name is not None:
                 p.name = cmd.dto.name
             if cmd.dto.price is not None:

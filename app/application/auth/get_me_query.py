@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from app.application.common.interfaces.user_repository import IUserRepository
-from app.core.exceptions import NotFoundException
+from app.core.exceptions import NotFoundError
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,7 +30,7 @@ class GetCurrentUserHandler:
     async def handle(self, cmd: GetCurrentUserQuery) -> CurrentUserDto:
         user = await self._users.find_by_id(cmd.user_id)
         if user is None:
-            raise NotFoundException(f"Usuario {cmd.user_id} no encontrado")
+            raise NotFoundError(f"Usuario {cmd.user_id} no encontrado")
         return CurrentUserDto(
             id=user.id,
             username=user.username,

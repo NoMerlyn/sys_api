@@ -28,12 +28,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 def _user_repo() -> IUserRepository:
     """Repository factory. FastAPI will instantiate per request via Depends."""
-
-    raise _NotInSyncContext()  # see get_user_repo below
-
-
-class _NotInSyncContext(RuntimeError):
-    pass
+    raise NotImplementedError("Rewire to use request-scoped session dependency")
 
 
 async def get_user_repo() -> IUserRepository:

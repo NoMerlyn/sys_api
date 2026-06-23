@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.core.exceptions import BusinessException
+from app.core.exceptions import BusinessError
 from app.domain.value_objects.cedula import Cedula
 
 
@@ -44,7 +44,7 @@ def test_valid_cedulas_pass(valid_cedula: str) -> None:
     ],
 )
 def test_invalid_cedulas_raise(invalid_cedula: str) -> None:
-    with pytest.raises(BusinessException, match="Cédula inválida"):
+    with pytest.raises(BusinessError, match="Cédula inválida"):
         Cedula(invalid_cedula)
 
 

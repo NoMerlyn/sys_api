@@ -8,7 +8,7 @@ from typing import Any
 from app.application.common.interfaces.tax_repository import ITaxRepository
 from app.application.common.uow import uow
 from app.application.taxes.dto import CreateTaxDto, TaxResponseDto, UpdateTaxDto
-from app.core.exceptions import NotFoundException
+from app.core.exceptions import NotFoundError
 
 
 def _to_dto(t: Any) -> TaxResponseDto:
@@ -45,7 +45,7 @@ class GetTaxHandler:
             taxes = self._taxes.__class__(session)
             t = await taxes.find_by_id(cmd.tax_id)
             if t is None:
-                raise NotFoundException(f"Impuesto {cmd.tax_id} no encontrado")
+                raise NotFoundError(f"Impuesto {cmd.tax_id} no encontrado")
             return _to_dto(t)
 
 
@@ -83,7 +83,7 @@ class UpdateTaxHandler:
             taxes = self._taxes.__class__(session)
             t = await taxes.find_by_id(cmd.tax_id)
             if t is None:
-                raise NotFoundException(f"Impuesto {cmd.tax_id} no encontrado")
+                raise NotFoundError(f"Impuesto {cmd.tax_id} no encontrado")
             if cmd.dto.name is not None:
                 t.name = cmd.dto.name
             if cmd.dto.current_rate is not None:

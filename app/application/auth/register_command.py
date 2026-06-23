@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from app.application.common.interfaces.role_repository import IRoleRepository
 from app.application.common.interfaces.user_repository import IUserRepository
 from app.application.common.uow import uow
-from app.core.exceptions import BusinessException
+from app.core.exceptions import BusinessError
 from app.core.security import hash_password
 
 
@@ -30,16 +30,15 @@ class RegisterUserHandler:
     async def handle(self, cmd: RegisterUserCommand) -> int:
         async with uow() as session:
             users = self._users.__class__(session)
-            roles = self._roles.__class__(session)
             existing = await users.find_by_email(cmd.email)
             if existing is not None:
-                raise BusinessException(
+                raise BusinessError(
                     f"Ya existe un usuario con email {cmd.email}",
                     details={"field": "email"},
                 )
             existing_username = await users.find_by_username(cmd.username)
             if existing_username is not None:
-                raise BusinessException(
+                raise BusinessError(
                     f"Ya existe un usuario con username {cmd.username}",
                     details={"field": "username"},
                 )

@@ -5,6 +5,6 @@ from __future__ import annotations
 import enum
 
 
-class MovementType(str, enum.Enum):
+class MovementType(enum.StrEnum):
     ENTRY = "ENTRY"
     EXIT = "EXIT"

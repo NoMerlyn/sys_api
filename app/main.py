@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse
 from app.config import get_settings
 from app.core.exceptions import (
     AppError,
-    BusinessException,
+    BusinessError,
     app_error_handler,
     business_exception_handler,
 )
@@ -75,7 +75,7 @@ def create_app() -> FastAPI:
     )
 
     app.add_exception_handler(AppError, app_error_handler)  # type: ignore[arg-type]
-    app.add_exception_handler(BusinessException, business_exception_handler)  # type: ignore[arg-type]
+    app.add_exception_handler(BusinessError, business_exception_handler)  # type: ignore[arg-type]
 
     @app.exception_handler(RequestValidationError)
     async def _validation_error_handler(_: Request, exc: RequestValidationError) -> JSONResponse:

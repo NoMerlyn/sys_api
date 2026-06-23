@@ -12,7 +12,7 @@ from app.application.clients.dto import (
 )
 from app.application.common.interfaces.client_repository import IClientRepository
 from app.application.common.uow import uow
-from app.core.exceptions import NotFoundException
+from app.core.exceptions import NotFoundError
 from app.core.pagination import Page
 
 
@@ -60,7 +60,7 @@ class GetClientHandler:
             clients = self._clients.__class__(session)
             c = await clients.find_by_id(cmd.client_id)
             if c is None:
-                raise NotFoundException(f"Cliente {cmd.client_id} no encontrado")
+                raise NotFoundError(f"Cliente {cmd.client_id} no encontrado")
             return _to_dto(c)
 
 
@@ -105,7 +105,7 @@ class UpdateClientHandler:
             clients = self._clients.__class__(session)
             c = await clients.find_by_id(cmd.client_id)
             if c is None:
-                raise NotFoundException(f"Cliente {cmd.client_id} no encontrado")
+                raise NotFoundError(f"Cliente {cmd.client_id} no encontrado")
             for field in ("first_name", "last_name", "cedula", "phone", "address", "email"):
                 value = getattr(cmd.dto, field)
                 if value is not None:

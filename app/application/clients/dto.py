@@ -17,7 +17,7 @@ class _CedulaMixin(BaseModel):
             return None
         # Strip whitespace; tolerate "1712345678 " or "171234567-8" etc.
         cleaned = value.strip().replace(" ", "").replace("-", "")
-        Cedula(cleaned)  # raises BusinessException on failure
+        Cedula(cleaned)  # raises BusinessError on failure
         return cleaned
 
 

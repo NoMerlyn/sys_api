@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from app.infrastructure.db.models.product import Product
 
 
-class MovementType(str, enum.Enum):
+class MovementType(enum.StrEnum):
     ENTRY = "ENTRY"
     EXIT = "EXIT"
 
