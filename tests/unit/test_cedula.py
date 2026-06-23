@@ -35,10 +35,10 @@ def test_valid_cedulas_pass(valid_cedula: str) -> None:
         "0012345678",  # invalid province 00
         "2512345678",  # invalid province 25 (max 24)
         "0000000000",  # all zeros rejected
-        "171234567",   # too short (9 digits)
+        "171234567",  # too short (9 digits)
         "17123456789",  # too long (11 digits)
         "171234567A",  # non-numeric
-        "",            # empty string
+        "",  # empty string
         "1111111111",  # all same digit
         "3000000001",  # province 30 is NOT accepted (we are strict)
     ],

@@ -100,13 +100,9 @@ async def _bulk_insert_invoices(session, rng: random.Random) -> float:
     # Pull a sample of real client and user ids. We can't just use randint(1, count)
     # because the autoincrement sequence has gaps from failed batches.
     real_client_ids = [
-        row[0]
-        for row in (await session.execute(text("SELECT id FROM clients"))).all()
+        row[0] for row in (await session.execute(text("SELECT id FROM clients"))).all()
     ]
-    real_user_ids = [
-        row[0]
-        for row in (await session.execute(text("SELECT id FROM users"))).all()
-    ]
+    real_user_ids = [row[0] for row in (await session.execute(text("SELECT id FROM users"))).all()]
     if not real_client_ids or not real_user_ids:
         print("Skipping invoices: no clients or users yet.")
         return 0.0

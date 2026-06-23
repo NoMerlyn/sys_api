@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 
+from app.application.audit import audit
 from app.application.auth import (
     GetCurrentUserHandler,
     GetCurrentUserQuery,
@@ -42,13 +43,36 @@ async def get_user_repo() -> IUserRepository:
 
 
 @router.post("/login", response_model=AuthResponseDto)
-async def login(payload: LoginDto) -> AuthResponseDto:
+async def login(payload: LoginDto, request: Request) -> AuthResponseDto:
+    ip = request.client.host if request.client else None
     async with uow() as session:
         from app.infrastructure.repositories.user_repository import SqlUserRepository
 
         handler = LoginHandler(SqlUserRepository(session))
-        result: LoginResult = await handler.handle(
-            LoginCommand(email=payload.email, password=payload.password)
+        try:
+            result: LoginResult = await handler.handle(
+                LoginCommand(email=payload.email, password=payload.password)
+            )
+        except Exception as exc:
+            # Best-effort audit on failure: don't let it shadow the auth error.
+            try:
+                async with audit(session) as log:
+                    await log.add(
+                        action="LOGIN_FAILED",
+                        entity="USER",
+                        detail=str(getattr(exc, "detail", str(exc)))[:255] or None,
+                        ip_address=ip,
+                    )
+            except Exception:
+                pass
+            raise
+    # Audit success in a separate transaction.
+    async with uow() as session, audit(session) as log:
+        await log.add(
+            action="LOGIN_SUCCESS",
+            entity="USER",
+            detail=payload.email,
+            ip_address=ip,
         )
     return AuthResponseDto(access_token=result.access_token, expires_in=result.expires_in)
 

@@ -107,6 +107,7 @@ async def get_invoice_by_number(user: CurrentUserDep, invoice_number: str) -> In
 @router.post("", response_model=InvoiceResponseDto, status_code=status.HTTP_201_CREATED)
 async def create_invoice(user: CurrentUserDep, payload: CreateInvoiceDto) -> InvoiceResponseDto:
     async with uow() as session:
+        from app.application.audit import audit
         from app.infrastructure.repositories.client_repository import SqlClientRepository
         from app.infrastructure.repositories.invoice_repository import (
             SqlInvoiceRepository,
@@ -125,6 +126,15 @@ async def create_invoice(user: CurrentUserDep, payload: CreateInvoiceDto) -> Inv
             SqlTaxRepository(session),
         )
         invoice_id = await handler.handle(CreateInvoiceCommand(dto=payload, seller_id=user.id))
+        # Audit the creation.
+        async with audit(session) as log:
+            await log.add(
+                action="CREATE",
+                entity="INVOICE",
+                entity_id=invoice_id,
+                user_id=user.id,
+                detail=f"client_id={payload.client_id}, items={len(payload.items)}",
+            )
         get_h = GetInvoiceHandler(SqlInvoiceRepository(session))
         return await get_h.handle(GetInvoiceQuery(invoice_id=invoice_id))
 
@@ -174,6 +184,17 @@ async def change_invoice_status(
             SqlProductRepository(session),
             SqlStockMovementRepository(session),
         )
-        return await handler.handle(
+        invoice = await handler.handle(
             ChangeInvoiceStatusCommand(invoice_id=invoice_id, dto=payload, actor_id=user.id)
         )
+        # Audit the status change.
+        from app.application.audit import audit
+        async with audit(session) as log:
+            await log.add(
+                action="STATUS_CHANGE",
+                entity="INVOICE",
+                entity_id=invoice_id,
+                user_id=user.id,
+                detail=f"status={payload.status}, reason={payload.reason or ''}"[:255],
+            )
+        return invoice

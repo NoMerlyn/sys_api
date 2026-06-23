@@ -93,6 +93,7 @@ def create_app() -> FastAPI:
         return {"status": "ok"}
 
     # Routers
+    from app.presentation.routers import audit as audit_router
     from app.presentation.routers import auth as auth_router
     from app.presentation.routers import clients as clients_router
     from app.presentation.routers import products as products_router
@@ -113,6 +114,7 @@ def create_app() -> FastAPI:
 
     app.include_router(invoices_router.router, prefix="/api")
     app.include_router(invoice_pdf_router.router, prefix="/api")
+    app.include_router(audit_router.router, prefix="/api")
 
     return app
 
