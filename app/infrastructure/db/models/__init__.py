@@ -8,6 +8,7 @@ two additions:
   `REJECTED` (legacy `CONFIRMED`/`CANCELLED` preserved).
 """
 
+from app.infrastructure.db.models.audit_log import AuditLog
 from app.infrastructure.db.models.blocked_user import BlockedUser
 from app.infrastructure.db.models.client import Client
 from app.infrastructure.db.models.error_log import ErrorLog
@@ -24,6 +25,7 @@ from app.infrastructure.db.models.user import User
 from app.infrastructure.db.models.user_role import UserRole
 
 __all__ = [
+    "AuditLog",
     "BlockedUser",
     "Client",
     "ErrorLog",

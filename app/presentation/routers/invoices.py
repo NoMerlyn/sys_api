@@ -125,6 +125,16 @@ async def create_invoice(user: CurrentUserDep, payload: CreateInvoiceDto) -> Inv
             SqlTaxRepository(session),
         )
         invoice_id = await handler.handle(CreateInvoiceCommand(dto=payload, seller_id=user.id))
+        # Audit the create.
+        from app.application.audit import audit
+        async with audit(session) as log:
+            await log.add(
+                action="CREATE",
+                entity="INVOICE",
+                entity_id=invoice_id,
+                user_id=user.id,
+                detail=f"client_id={payload.client_id}, items={len(payload.items)}",
+            )
         get_h = GetInvoiceHandler(SqlInvoiceRepository(session))
         return await get_h.handle(GetInvoiceQuery(invoice_id=invoice_id))
 
