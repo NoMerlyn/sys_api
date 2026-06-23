@@ -26,5 +26,11 @@ sys.exit(0)
     sleep 2
 done
 
-echo "[entrypoint] ${RABBIT_HOST}:${RABBIT_PORT} is reachable, starting uvicorn"
+echo "[entrypoint] ${RABBIT_HOST}:${RABBIT_PORT} is reachable, running migrations"
+
+# Apply Alembic migrations before serving traffic. `alembic upgrade head`
+# is idempotent — it will detect an up-to-date schema and exit 0.
+alembic upgrade head
+
+echo "[entrypoint] migrations applied, starting uvicorn"
 exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
