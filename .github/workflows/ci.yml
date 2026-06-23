@@ -29,8 +29,7 @@ jobs:
         run: ruff check app tests
 
       - name: Type check (mypy)
-        continue-on-error: true
-        run: mypy app || true
+        run: mypy app
 
       - name: Run tests
         run: pytest -q
