@@ -29,7 +29,7 @@ class RegisterUserHandler:
 
     async def handle(self, cmd: RegisterUserCommand) -> int:
         async with uow() as session:
-            users = self._users.__class__(session)
+            users = self._users.__class__(session)  # type: ignore[call-arg]
             existing = await users.find_by_email(cmd.email)
             if existing is not None:
                 raise BusinessError(

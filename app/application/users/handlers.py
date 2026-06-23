@@ -46,7 +46,7 @@ class GetUsersHandler:
 
     async def handle(self, cmd: GetUsersQuery) -> tuple[list[UserResponseDto], int]:
         async with uow() as session:
-            users = self._users.__class__(session)
+            users = self._users.__class__(session)  # type: ignore[call-arg]
             rows, total = await users.find_all(cmd.page, cmd.search)
             return [_to_user_dto(u) for u in rows], total
 
@@ -62,7 +62,7 @@ class GetUserHandler:
 
     async def handle(self, cmd: GetUserQuery) -> UserResponseDto:
         async with uow() as session:
-            users = self._users.__class__(session)
+            users = self._users.__class__(session)  # type: ignore[call-arg]
             user = await users.find_by_id(cmd.user_id)
             if user is None:
                 raise NotFoundError(f"Usuario {cmd.user_id} no encontrado")
@@ -81,7 +81,7 @@ class CreateUserHandler:
 
     async def handle(self, cmd: CreateUserCommand) -> int:
         async with uow() as session:
-            users = self._users.__class__(session)
+            users = self._users.__class__(session)  # type: ignore[call-arg]
             if await users.find_by_email(cmd.dto.email) is not None:
                 raise BusinessError(
                     f"Email duplicado: {cmd.dto.email}", details={"field": "email"}
@@ -126,7 +126,7 @@ class UpdateUserHandler:
 
     async def handle(self, cmd: UpdateUserCommand) -> UserResponseDto:
         async with uow() as session:
-            users = self._users.__class__(session)
+            users = self._users.__class__(session)  # type: ignore[call-arg]
             user = await users.find_by_id(cmd.user_id)
             if user is None:
                 raise NotFoundError(f"Usuario {cmd.user_id} no encontrado")
@@ -155,7 +155,7 @@ class DeleteUserHandler:
 
     async def handle(self, cmd: DeleteUserCommand) -> None:
         async with uow() as session:
-            users = self._users.__class__(session)
+            users = self._users.__class__(session)  # type: ignore[call-arg]
             await users.soft_delete(cmd.user_id)
 
 
@@ -172,7 +172,7 @@ class AssignRolesHandler:
 
     async def handle(self, cmd: AssignRolesCommand) -> UserResponseDto:
         async with uow() as session:
-            users = self._users.__class__(session)
+            users = self._users.__class__(session)  # type: ignore[call-arg]
             user = await users.find_by_id(cmd.user_id)
             if user is None:
                 raise NotFoundError(f"Usuario {cmd.user_id} no encontrado")
@@ -199,7 +199,7 @@ class GetRolesHandler:
 
     async def handle(self, cmd: GetRolesQuery) -> list[RoleResponseDto]:
         async with uow() as session:
-            roles = self._roles.__class__(session)
+            roles = self._roles.__class__(session)  # type: ignore[call-arg]
             rows = await roles.find_all()
             return [RoleResponseDto(id=r.id, name=r.name, description=r.description) for r in rows]
 
@@ -215,7 +215,7 @@ class GetUserRolesHandler:
 
     async def handle(self, cmd: GetUserRolesQuery) -> list[RoleResponseDto]:
         async with uow() as session:
-            users = self._users.__class__(session)
+            users = self._users.__class__(session)  # type: ignore[call-arg]
             user = await users.find_by_id(cmd.user_id)
             if user is None:
                 raise NotFoundError(f"Usuario {cmd.user_id} no encontrado")
@@ -237,7 +237,7 @@ class GetErrorLogsHandler:
 
     async def handle(self, cmd: GetErrorLogsQuery) -> tuple[list[ErrorLogResponseDto], int]:
         async with uow() as session:
-            logs = self._logs.__class__(session)
+            logs = self._logs.__class__(session)  # type: ignore[call-arg]
             rows, total = await logs.find_all(cmd.page, cmd.search)
             return [
                 ErrorLogResponseDto(

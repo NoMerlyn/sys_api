@@ -105,5 +105,5 @@ async def business_exception_handler(_: Request, exc: BusinessError) -> JSONResp
 
 def register_exception_handlers(app: FastAPI) -> None:
     """Alternative manual registration if create_app is bypassed."""
-    app.add_exception_handler(AppError, app_error_handler)
-    app.add_exception_handler(BusinessError, business_exception_handler)
+    app.add_exception_handler(AppError, app_error_handler)  # type: ignore[arg-type]
+    app.add_exception_handler(BusinessError, business_exception_handler)  # type: ignore[arg-type]

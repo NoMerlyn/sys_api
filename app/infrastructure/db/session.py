@@ -52,7 +52,7 @@ def init_engine(database_url: str) -> AsyncEngine:
         from sqlalchemy import create_engine as _create_sync
         from sqlalchemy.orm import sessionmaker as _sessionmaker_sync
 
-        _engine = _create_sync(
+        _engine = _create_sync(  # type: ignore[assignment]
             database_url.replace("postgresql://", "postgresql+psycopg2://"),
             echo=False,
             pool_pre_ping=True,
@@ -64,7 +64,7 @@ def init_engine(database_url: str) -> AsyncEngine:
         )
     else:
         raise ValueError(f"Unsupported database URL: {database_url!r}")
-    return _engine
+    return _engine  # type: ignore[return-value]
 
 
 async def dispose_engine() -> None:

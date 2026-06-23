@@ -21,7 +21,7 @@ class SqlBlockedUserRepository(IBlockedUserRepository):
         )
         return result.scalar_one_or_none()
 
-    async def upsert(
+    async def upsert(  # type: ignore[override]
         self, user_id: int, failed_attempts: int, blocked_at: datetime | None
     ) -> BlockedUser:
         existing = await self.find_by_user_id(user_id)

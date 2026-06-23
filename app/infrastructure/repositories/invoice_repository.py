@@ -8,6 +8,7 @@ without churning the public interface.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import cast
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +17,7 @@ from app.application.common.interfaces.invoice_repository import IInvoiceReposit
 from app.core.pagination import Page
 from app.domain.value_objects.invoice_status import InvoiceStatus
 from app.infrastructure.db.models.invoice import Invoice
+from app.infrastructure.db.models.invoice import InvoiceStatus as DbInvoiceStatus
 
 
 class SqlInvoiceRepository(IInvoiceRepository):
@@ -81,7 +83,7 @@ class SqlInvoiceRepository(IInvoiceRepository):
             raise LookupError(f"Invoice {invoice_id} not found")
         if expected_version is not None and invoice.version != expected_version:
             raise RuntimeError("Optimistic lock conflict")
-        invoice.status = new_status
+        invoice.status = cast(DbInvoiceStatus, new_status)
         if rejection_reason is not None:
             invoice.rejection_reason = rejection_reason
         invoice.version = (invoice.version or 0) + 1

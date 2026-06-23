@@ -26,7 +26,7 @@ class ListTaxesHandler:
 
     async def handle(self, cmd: ListTaxesQuery) -> list[TaxResponseDto]:
         async with uow() as session:
-            taxes = self._taxes.__class__(session)
+            taxes = self._taxes.__class__(session)  # type: ignore[call-arg]
             rows = await taxes.find_all()
             return [_to_dto(t) for t in rows]
 
@@ -42,7 +42,7 @@ class GetTaxHandler:
 
     async def handle(self, cmd: GetTaxQuery) -> TaxResponseDto:
         async with uow() as session:
-            taxes = self._taxes.__class__(session)
+            taxes = self._taxes.__class__(session)  # type: ignore[call-arg]
             t = await taxes.find_by_id(cmd.tax_id)
             if t is None:
                 raise NotFoundError(f"Impuesto {cmd.tax_id} no encontrado")
@@ -60,7 +60,7 @@ class CreateTaxHandler:
 
     async def handle(self, cmd: CreateTaxCommand) -> int:
         async with uow() as session:
-            taxes = self._taxes.__class__(session)
+            taxes = self._taxes.__class__(session)  # type: ignore[call-arg]
             from app.infrastructure.db.models.tax import Tax
 
             row = Tax(name=cmd.dto.name, current_rate=cmd.dto.current_rate)
@@ -80,7 +80,7 @@ class UpdateTaxHandler:
 
     async def handle(self, cmd: UpdateTaxCommand) -> TaxResponseDto:
         async with uow() as session:
-            taxes = self._taxes.__class__(session)
+            taxes = self._taxes.__class__(session)  # type: ignore[call-arg]
             t = await taxes.find_by_id(cmd.tax_id)
             if t is None:
                 raise NotFoundError(f"Impuesto {cmd.tax_id} no encontrado")
@@ -103,5 +103,5 @@ class DeleteTaxHandler:
 
     async def handle(self, cmd: DeleteTaxCommand) -> None:
         async with uow() as session:
-            taxes = self._taxes.__class__(session)
+            taxes = self._taxes.__class__(session)  # type: ignore[call-arg]
             await taxes.soft_delete(cmd.tax_id)

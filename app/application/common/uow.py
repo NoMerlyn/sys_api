@@ -11,11 +11,13 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.infrastructure.db.session import session_scope  # re-export
 
 
 @asynccontextmanager
-async def uow() -> AsyncIterator[object]:
+async def uow() -> AsyncIterator[AsyncSession]:
     """Open an async UoW scoped session. Use as `async with uow() as s:`."""
     async with session_scope() as session:
         yield session

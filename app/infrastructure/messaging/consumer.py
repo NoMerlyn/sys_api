@@ -32,9 +32,9 @@ logger = logging.getLogger(__name__)
 async def _on_validated(event_id: uuid.UUID, data: dict[str, Any]) -> None:
     invoice_id = int(data["invoice_id"])
     async with uow() as session:
-        invoices: IInvoiceRepository = _new(IInvoiceRepository, session)  # type: ignore[assignment]
-        products: IProductRepository = _new(IProductRepository, session)  # type: ignore[assignment]
-        moves: IStockMovementRepository = _new(IStockMovementRepository, session)  # type: ignore[assignment]
+        invoices: IInvoiceRepository = _new(IInvoiceRepository, session)
+        products: IProductRepository = _new(IProductRepository, session)
+        moves: IStockMovementRepository = _new(IStockMovementRepository, session)
         from app.infrastructure.repositories.invoice_repository import (
             SqlInvoiceRepository,
         )
@@ -96,7 +96,7 @@ async def _on_rejected(event_id: uuid.UUID, data: dict[str, Any]) -> None:
         await invoices.update_status(invoice_id, InvoiceStatus.REJECTED, rejection_reason=reason)
 
 
-def _new(interface, session):  # type: ignore[no-untyped-def]
+def _new(interface, session):
     """Placeholder to satisfy the no-op `from app... import ...` branches."""
     return None
 

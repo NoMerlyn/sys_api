@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import random
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import select
 
@@ -39,7 +40,7 @@ DEMO_USERS = [
     },
 ]
 
-DEMO_TAXES = [
+DEMO_TAXES: list[dict[str, Any]] = [
     {"name": "IVA 15%", "current_rate": Decimal("15.00")},
     {"name": "IVA 0%", "current_rate": Decimal("0.00")},
 ]

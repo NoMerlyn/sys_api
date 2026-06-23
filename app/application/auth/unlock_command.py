@@ -20,7 +20,7 @@ class UnlockUserHandler:
 
     async def handle(self, cmd: UnlockUserCommand) -> None:
         async with uow() as session:
-            users = self._users.__class__(session)
+            users = self._users.__class__(session)  # type: ignore[call-arg]
             user = await users.find_by_id(cmd.user_id)
             if user is None:
                 raise NotFoundError(f"Usuario {cmd.user_id} no encontrado")

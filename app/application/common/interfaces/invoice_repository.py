@@ -1,6 +1,7 @@
 """IInvoiceRepository interface."""
 
 from __future__ import annotations
+from typing import Any
 
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
@@ -13,12 +14,12 @@ class IInvoiceRepository(ABC):
     @abstractmethod
     async def find_by_id(
         self, invoice_id: int, *, include_details: bool = True
-    ) -> object | None: ...
+    ) -> Any: ...
 
     @abstractmethod
     async def find_by_number(
         self, invoice_number: str, *, include_details: bool = True
-    ) -> object | None: ...
+    ) -> Any: ...
 
     @abstractmethod
     async def find_all(
@@ -27,10 +28,10 @@ class IInvoiceRepository(ABC):
         search: str | None = None,
         status: InvoiceStatus | None = None,
         seller_id: int | None = None,
-    ) -> tuple[Sequence[object], int]: ...
+    ) -> tuple[Sequence[Any], int]: ...
 
     @abstractmethod
-    async def create(self, invoice: object) -> object: ...
+    async def create(self, invoice: Any) -> Any: ...
 
     @abstractmethod
     async def update_status(
@@ -40,7 +41,7 @@ class IInvoiceRepository(ABC):
         *,
         rejection_reason: str | None = None,
         expected_version: int | None = None,
-    ) -> object: ...
+    ) -> Any: ...
 
     @abstractmethod
     async def next_invoice_number(self) -> str: ...

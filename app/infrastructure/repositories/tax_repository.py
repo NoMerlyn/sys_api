@@ -36,5 +36,8 @@ class SqlTaxRepository(ITaxRepository):
         tax = await self.find_by_id(tax_id)
         if tax is None:
             return
-        tax.soft_delete()
+        # Tax does not carry is_active; treat soft delete as a hard
+        # delete for now (no audit-trail preservation is required for
+        # taxes in the current spec).
+        await self._session.delete(tax)
         await self._session.flush()

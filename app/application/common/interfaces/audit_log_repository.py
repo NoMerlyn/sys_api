@@ -1,6 +1,7 @@
 """Repository interface for AuditLog."""
 
 from __future__ import annotations
+from typing import Any
 
 from abc import ABC, abstractmethod
 from datetime import datetime

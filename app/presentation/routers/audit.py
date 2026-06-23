@@ -26,7 +26,7 @@ router = APIRouter(prefix="/audit-logs", tags=["audit"])
 def _audit_repo() -> AuditLogRepository:
     # The handler will re-instantiate this on the right session, but
     # FastAPI's Depends machinery needs something to inject.
-    return SqlAuditLogRepository.__new__(SqlAuditLogRepository)  # type: ignore[abstract]
+    return SqlAuditLogRepository.__new__(SqlAuditLogRepository)
 
 
 @router.get("", response_model=PaginatedResponse)
@@ -39,7 +39,7 @@ async def list_audit_logs(
     user_id: int | None = None,
     since: datetime | None = None,
 ) -> PaginatedResponse:
-    repo = SqlAuditLogRepository.__new__(SqlAuditLogRepository)  # type: ignore[abstract]
+    repo = SqlAuditLogRepository.__new__(SqlAuditLogRepository)
     handler = GetAuditLogsHandler(repo)
     rows, total = await handler.handle(
         GetAuditLogsQuery(

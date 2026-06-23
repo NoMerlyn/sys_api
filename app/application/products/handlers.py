@@ -38,7 +38,7 @@ class ListProductsHandler:
 
     async def handle(self, cmd: ListProductsQuery) -> tuple[list[ProductResponseDto], int]:
         async with uow() as session:
-            products = self._products.__class__(session)
+            products = self._products.__class__(session)  # type: ignore[call-arg]
             rows, total = await products.find_all(cmd.page, cmd.search)
             return [_to_dto(p) for p in rows], total
 
@@ -55,7 +55,7 @@ class ListProductsForSaleHandler:
 
     async def handle(self, cmd: ListProductsForSaleQuery) -> tuple[list[ProductResponseDto], int]:
         async with uow() as session:
-            products = self._products.__class__(session)
+            products = self._products.__class__(session)  # type: ignore[call-arg]
             rows, total = await products.find_for_sale(cmd.page, cmd.search)
             return [_to_dto(p) for p in rows], total
 
@@ -71,7 +71,7 @@ class GetProductHandler:
 
     async def handle(self, cmd: GetProductQuery) -> ProductResponseDto:
         async with uow() as session:
-            products = self._products.__class__(session)
+            products = self._products.__class__(session)  # type: ignore[call-arg]
             p = await products.find_by_id(cmd.product_id)
             if p is None:
                 raise NotFoundError(f"Producto {cmd.product_id} no encontrado")
@@ -89,7 +89,7 @@ class CreateProductHandler:
 
     async def handle(self, cmd: CreateProductCommand) -> int:
         async with uow() as session:
-            products = self._products.__class__(session)
+            products = self._products.__class__(session)  # type: ignore[call-arg]
             from app.infrastructure.db.models.product import Product
 
             row = Product(
@@ -114,7 +114,7 @@ class UpdateProductHandler:
 
     async def handle(self, cmd: UpdateProductCommand) -> ProductResponseDto:
         async with uow() as session:
-            products = self._products.__class__(session)
+            products = self._products.__class__(session)  # type: ignore[call-arg]
             p = await products.find_by_id(cmd.product_id)
             if p is None:
                 raise NotFoundError(f"Producto {cmd.product_id} no encontrado")
@@ -141,5 +141,5 @@ class DeleteProductHandler:
 
     async def handle(self, cmd: DeleteProductCommand) -> None:
         async with uow() as session:
-            products = self._products.__class__(session)
+            products = self._products.__class__(session)  # type: ignore[call-arg]
             await products.soft_delete(cmd.product_id)

@@ -54,6 +54,7 @@ async def login(payload: LoginDto, request: Request) -> AuthResponseDto:
             try:
                 async with uow() as fail_session:
                     from app.application.audit import audit as _audit
+
                     async with _audit(fail_session) as log:
                         await log.add(
                             action="LOGIN_FAILED",
@@ -67,6 +68,7 @@ async def login(payload: LoginDto, request: Request) -> AuthResponseDto:
     # Audit success in a separate transaction.
     async with uow() as session:
         from app.application.audit import audit
+
         async with audit(session) as log:
             await log.add(
                 action="LOGIN_SUCCESS",

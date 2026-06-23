@@ -33,7 +33,7 @@ async def get_channel_pool(url: str) -> RobustChannel:
     if _connection is None or _connection.is_closed:
         _connection = await aio_pika.connect_robust(url)
         logger.info("RabbitMQ connection established")
-    return await _connection.channel(publisher_confirms=True)
+    return await _connection.channel(publisher_confirms=True)  # type: ignore[return-value]
 
 
 async def declare_topology() -> None:

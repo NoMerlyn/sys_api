@@ -46,7 +46,7 @@ def _q(value: Decimal) -> Decimal:
 
 
 def _to_dto(inv: Any) -> InvoiceResponseDto:
-    items: list[dict[str, Any]] = []
+    items: list = []  # populated as InvoiceItemResponseDto below
     for d in inv.details or []:
         items.append(
             {
@@ -114,11 +114,11 @@ class CreateInvoiceHandler:
 
     async def handle(self, cmd: CreateInvoiceCommand) -> int:
         async with uow() as session:
-            invoices = self._invoices.__class__(session)
-            products = self._products.__class__(session)
-            clients = self._clients.__class__(session)
-            users = self._users.__class__(session)
-            taxes_repo = self._taxes.__class__(session)
+            invoices = self._invoices.__class__(session)  # type: ignore[call-arg]
+            products = self._products.__class__(session)  # type: ignore[call-arg]
+            clients = self._clients.__class__(session)  # type: ignore[call-arg]
+            users = self._users.__class__(session)  # type: ignore[call-arg]
+            taxes_repo = self._taxes.__class__(session)  # type: ignore[call-arg]
 
             # 1) Validate unique product in items (req 3).
             seen: set[int] = set()
@@ -329,8 +329,8 @@ class UpdateInvoiceHandler:
 
     async def handle(self, cmd: UpdateInvoiceCommand) -> InvoiceResponseDto:
         async with uow() as session:
-            invoices = self._invoices.__class__(session)
-            products = self._products.__class__(session)
+            invoices = self._invoices.__class__(session)  # type: ignore[call-arg]
+            products = self._products.__class__(session)  # type: ignore[call-arg]
             inv = await invoices.find_by_id(cmd.invoice_id)
             if inv is None:
                 raise NotFoundError(f"Factura {cmd.invoice_id} no existe")
@@ -410,9 +410,9 @@ class ChangeInvoiceStatusHandler:
 
     async def handle(self, cmd: ChangeInvoiceStatusCommand) -> InvoiceResponseDto:
         async with uow() as session:
-            invoices = self._invoices.__class__(session)
-            products = self._products.__class__(session)
-            moves = self._stock_movements.__class__(session)
+            invoices = self._invoices.__class__(session)  # type: ignore[call-arg]
+            products = self._products.__class__(session)  # type: ignore[call-arg]
+            moves = self._stock_movements.__class__(session)  # type: ignore[call-arg]
             inv = await invoices.find_by_id(cmd.invoice_id)
             if inv is None:
                 raise NotFoundError(f"Factura {cmd.invoice_id} no existe")
@@ -474,7 +474,7 @@ class GetInvoicesHandler:
 
     async def handle(self, cmd: GetInvoicesQuery) -> tuple[list[InvoiceResponseDto], int]:
         async with uow() as session:
-            invoices = self._invoices.__class__(session)
+            invoices = self._invoices.__class__(session)  # type: ignore[call-arg]
             rows, total = await invoices.find_all(cmd.page, cmd.search, cmd.status, cmd.seller_id)
             return [_to_dto(r) for r in rows], total
 
@@ -490,7 +490,7 @@ class GetInvoiceHandler:
 
     async def handle(self, cmd: GetInvoiceQuery) -> InvoiceResponseDto:
         async with uow() as session:
-            invoices = self._invoices.__class__(session)
+            invoices = self._invoices.__class__(session)  # type: ignore[call-arg]
             inv = await invoices.find_by_id(cmd.invoice_id)
             if inv is None:
                 raise NotFoundError(f"Factura {cmd.invoice_id} no existe")
@@ -508,7 +508,7 @@ class GetInvoiceByNumberHandler:
 
     async def handle(self, cmd: GetInvoiceByNumberQuery) -> InvoiceResponseDto:
         async with uow() as session:
-            invoices = self._invoices.__class__(session)
+            invoices = self._invoices.__class__(session)  # type: ignore[call-arg]
             inv = await invoices.find_by_number(cmd.invoice_number)
             if inv is None:
                 raise NotFoundError(f"Factura {cmd.invoice_number} no existe")

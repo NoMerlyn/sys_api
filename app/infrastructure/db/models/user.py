@@ -36,3 +36,6 @@ class User(Base, TimestampMixin):
 
     def __repr__(self) -> str:
         return f"User(id={self.id!r}, email={self.email!r})"
+
+    def soft_delete(self) -> None:
+        self.is_active = False

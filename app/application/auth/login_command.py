@@ -47,7 +47,7 @@ class LoginHandler:
     async def handle(self, cmd: LoginCommand) -> LoginResult:
         settings = get_settings()
         async with uow() as session:
-            users = self._users.__class__(session)
+            users = self._users.__class__(session)  # type: ignore[call-arg]
             user = await users.find_by_email(cmd.email)
             if user is None:
                 raise AuthError("Credenciales inválidas")

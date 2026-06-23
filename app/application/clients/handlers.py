@@ -41,7 +41,7 @@ class ListClientsHandler:
 
     async def handle(self, cmd: ListClientsQuery) -> tuple[list[ClientResponseDto], int]:
         async with uow() as session:
-            clients = self._clients.__class__(session)
+            clients = self._clients.__class__(session)  # type: ignore[call-arg]
             rows, total = await clients.find_all(cmd.page, cmd.search)
             return [_to_dto(c) for c in rows], total
 
@@ -57,7 +57,7 @@ class GetClientHandler:
 
     async def handle(self, cmd: GetClientQuery) -> ClientResponseDto:
         async with uow() as session:
-            clients = self._clients.__class__(session)
+            clients = self._clients.__class__(session)  # type: ignore[call-arg]
             c = await clients.find_by_id(cmd.client_id)
             if c is None:
                 raise NotFoundError(f"Cliente {cmd.client_id} no encontrado")
@@ -75,7 +75,7 @@ class CreateClientHandler:
 
     async def handle(self, cmd: CreateClientCommand) -> int:
         async with uow() as session:
-            clients = self._clients.__class__(session)
+            clients = self._clients.__class__(session)  # type: ignore[call-arg]
             from app.infrastructure.db.models.client import Client
 
             row = Client(
@@ -102,7 +102,7 @@ class UpdateClientHandler:
 
     async def handle(self, cmd: UpdateClientCommand) -> ClientResponseDto:
         async with uow() as session:
-            clients = self._clients.__class__(session)
+            clients = self._clients.__class__(session)  # type: ignore[call-arg]
             c = await clients.find_by_id(cmd.client_id)
             if c is None:
                 raise NotFoundError(f"Cliente {cmd.client_id} no encontrado")
@@ -127,5 +127,5 @@ class DeleteClientHandler:
 
     async def handle(self, cmd: DeleteClientCommand) -> None:
         async with uow() as session:
-            clients = self._clients.__class__(session)
+            clients = self._clients.__class__(session)  # type: ignore[call-arg]
             await clients.soft_delete(cmd.client_id)
