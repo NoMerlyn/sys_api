@@ -67,8 +67,8 @@ async def wired_db() -> AsyncIterator[None]:
     session_module._engine = engine
     session_module._session_factory = factory
 
-    Session = factory
-    async with Session() as s:
+    factory2 = factory
+    async with factory2() as s:
         role = Role(name="SELLER")
         s.add(role)
         await s.flush()
