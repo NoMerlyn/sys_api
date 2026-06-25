@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 
 from app.application.common.uow import uow
 from app.application.reports import (
@@ -83,3 +83,47 @@ async def by_day(
     handler = SalesByDayHandler()
     async with uow() as session:
         return await handler.handle(SalesByDayQuery(since=since, until=until), session)
+
+
+
+@router.get("/sales.xlsx")
+async def sales_xlsx(
+    _admin: Annotated[object, Depends(require_role("ADMINISTRATOR"))],
+    limit: int = Query(100, ge=1, le=500),
+    since: datetime | None = None,
+    until: datetime | None = None,
+) -> Response:
+    from fastapi.responses import Response
+
+    from app.application.reports.excel import build_workbook
+    # Hit the existing handlers to reuse the SQL logic.
+    async with uow() as session:
+        summary = await SalesSummaryHandler().handle(
+            SalesSummaryQuery(since=since, until=until), session
+        )
+        products = await TopProductsHandler().handle(
+            TopProductsQuery(limit=limit, since=since, until=until), session
+        )
+        clients = await TopClientsHandler().handle(
+            TopClientsQuery(limit=limit, since=since, until=until), session
+        )
+        sellers = await TopSellersHandler().handle(
+            TopSellersQuery(limit=limit, since=since, until=until), session
+        )
+        days = await SalesByDayHandler().handle(
+            SalesByDayQuery(since=since, until=until), session
+        )
+    blob = build_workbook(
+        summary=summary,
+        top_products=products,
+        top_clients=clients,
+        top_sellers=sellers,
+        by_day=days,
+    )
+    return Response(
+        content=blob,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": "attachment; filename=\"sales-report.xlsx\""
+        },
+    )
