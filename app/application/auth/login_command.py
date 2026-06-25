@@ -38,6 +38,7 @@ class LoginCommand:
 class LoginResult:
     access_token: str
     expires_in: int
+    user_id: int
 
 
 class LoginHandler:
@@ -84,4 +85,6 @@ class LoginHandler:
                     "roles": roles,
                 },
             )
-            return LoginResult(access_token=token, expires_in=expires_in)
+            return LoginResult(
+                access_token=token, expires_in=expires_in, user_id=user.id
+            )

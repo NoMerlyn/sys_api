@@ -18,6 +18,7 @@ from app.infrastructure.db.models.invoice_detail_tax import InvoiceDetailTax
 from app.infrastructure.db.models.processed_event import ProcessedEvent
 from app.infrastructure.db.models.product import Product
 from app.infrastructure.db.models.product_tax import ProductTax
+from app.infrastructure.db.models.refresh_token import RefreshToken
 from app.infrastructure.db.models.role import Role
 from app.infrastructure.db.models.stock_movement import StockMovement
 from app.infrastructure.db.models.tax import Tax
@@ -35,6 +36,7 @@ __all__ = [
     "ProcessedEvent",
     "Product",
     "ProductTax",
+    "RefreshToken",
     "Role",
     "StockMovement",
     "Tax",

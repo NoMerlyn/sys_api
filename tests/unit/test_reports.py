@@ -133,6 +133,7 @@ async def wired_db() -> AsyncIterator[None]:
     await engine.dispose()
     with contextlib.suppress(FileNotFoundError):
         import os
+
         os.remove(async_url.split("/")[-1])
 
 

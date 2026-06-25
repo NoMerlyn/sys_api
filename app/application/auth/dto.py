@@ -23,6 +23,16 @@ class RegisterUserDto(BaseModel):
 class AuthResponseDto(BaseModel):
     access_token: str
     expires_in: int
+    refresh_token: str | None = None
+    refresh_expires_at: str | None = None
+
+
+class RefreshTokenDto(BaseModel):
+    refresh_token: str
+
+
+class LogoutDto(BaseModel):
+    refresh_token: str
 
 
 class MeResponseDto(BaseModel):

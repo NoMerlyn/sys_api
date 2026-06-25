@@ -33,9 +33,7 @@ async def summary(
 ) -> dict[str, object]:
     handler = SalesSummaryHandler()
     async with uow() as session:
-        return await handler.handle(
-            SalesSummaryQuery(since=since, until=until), session
-        )
+        return await handler.handle(SalesSummaryQuery(since=since, until=until), session)
 
 
 @router.get("/top-products")
@@ -61,9 +59,7 @@ async def top_clients(
 ) -> list[dict[str, object]]:
     handler = TopClientsHandler()
     async with uow() as session:
-        return await handler.handle(
-            TopClientsQuery(limit=limit, since=since, until=until), session
-        )
+        return await handler.handle(TopClientsQuery(limit=limit, since=since, until=until), session)
 
 
 @router.get("/top-sellers")
@@ -75,9 +71,7 @@ async def top_sellers(
 ) -> list[dict[str, object]]:
     handler = TopSellersHandler()
     async with uow() as session:
-        return await handler.handle(
-            TopSellersQuery(limit=limit, since=since, until=until), session
-        )
+        return await handler.handle(TopSellersQuery(limit=limit, since=since, until=until), session)
 
 
 @router.get("/by-day")
@@ -88,6 +82,4 @@ async def by_day(
 ) -> list[dict[str, object]]:
     handler = SalesByDayHandler()
     async with uow() as session:
-        return await handler.handle(
-            SalesByDayQuery(since=since, until=until), session
-        )
+        return await handler.handle(SalesByDayQuery(since=since, until=until), session)

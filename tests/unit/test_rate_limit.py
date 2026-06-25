@@ -39,7 +39,11 @@ async def wired_app() -> AsyncIterator[tuple[AsyncClient, str]]:
     settings.rabbitmq_url = "amqp://disabled:127.0.0.1:1/"
 
     await session_module.dispose_engine()
-    engine = create_async_engine(async_url, echo=False, future=True, )
+    engine = create_async_engine(
+        async_url,
+        echo=False,
+        future=True,
+    )
     factory = async_sessionmaker(bind=engine, expire_on_commit=False, autoflush=False)
     session_module._engine = engine
     session_module._session_factory = factory
@@ -83,10 +87,12 @@ async def wired_app() -> AsyncIterator[tuple[AsyncClient, str]]:
 async def test_login_rate_limit(wired_app) -> None:
     client, email = wired_app
     statuses = [
-        (await client.post(
-            "/api/auth/login",
-            json={"email": email, "password": "wrong"},
-        )).status_code
+        (
+            await client.post(
+                "/api/auth/login",
+                json={"email": email, "password": "wrong"},
+            )
+        ).status_code
         for _ in range(6)
     ]
     assert statuses[:5] == [401] * 5

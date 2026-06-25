@@ -7,16 +7,21 @@ from fastapi import APIRouter, Depends, Request, status
 from app.application.auth import (
     GetCurrentUserHandler,
     GetCurrentUserQuery,
+    IssueRefreshTokenHandler,
     LoginCommand,
     LoginHandler,
     LoginResult,
+    LogoutHandler,
+    RefreshAccessTokenHandler,
     RegisterUserCommand,
     RegisterUserHandler,
 )
 from app.application.auth.dto import (
     AuthResponseDto,
     LoginDto,
+    LogoutDto,
     MeResponseDto,
+    RefreshTokenDto,
     RegisterUserDto,
 )
 from app.application.common.interfaces.user_repository import IUserRepository
@@ -78,7 +83,20 @@ async def login(request: Request, payload: LoginDto) -> AuthResponseDto:
                 detail=payload.email,
                 ip_address=ip,
             )
-    return AuthResponseDto(access_token=result.access_token, expires_in=result.expires_in)
+    # Issue refresh token (separate transaction; opaque random string,
+    # stored server-side so it can be revoked).
+    from app.infrastructure.repositories.refresh_token_repository import (
+        SqlRefreshTokenRepository,
+    )
+
+    issue_handler = IssueRefreshTokenHandler(SqlRefreshTokenRepository.__new__(SqlRefreshTokenRepository))
+    refresh_info = await issue_handler.handle(result.user_id, ip_address=ip)
+    return AuthResponseDto(
+        access_token=result.access_token,
+        expires_in=result.expires_in,
+        refresh_token=refresh_info.token,
+        refresh_expires_at=refresh_info.expires_at.isoformat(),
+    )
 
 
 @router.post(
@@ -132,3 +150,36 @@ async def me(user: CurrentUserDep) -> MeResponseDto:
         last_name=me.last_name,
         roles=me.roles,
     )
+
+
+@router.post("/refresh", response_model=AuthResponseDto)
+@limiter.limit("30/minute")
+async def refresh(request: Request, payload: RefreshTokenDto) -> AuthResponseDto:
+    from app.infrastructure.repositories.refresh_token_repository import (
+        SqlRefreshTokenRepository,
+    )
+    from app.infrastructure.repositories.user_repository import SqlUserRepository
+
+    ip = request.client.host if request.client else None
+    async with uow() as session:
+        handler = RefreshAccessTokenHandler(
+            SqlRefreshTokenRepository(session),
+            SqlUserRepository(session),
+        )
+        result = await handler.handle(payload.refresh_token, ip_address=ip)
+    return AuthResponseDto(
+        access_token=result["access_token"],
+        expires_in=result["expires_in"],
+        refresh_token=result["refresh_token"],
+    )
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(payload: LogoutDto) -> None:
+    from app.infrastructure.repositories.refresh_token_repository import (
+        SqlRefreshTokenRepository,
+    )
+
+    async with uow() as session:
+        handler = LogoutHandler(SqlRefreshTokenRepository(session))
+        await handler.handle(payload.refresh_token)

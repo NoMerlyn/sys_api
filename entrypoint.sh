@@ -21,9 +21,9 @@ try:
 except Exception as e:
     sys.exit(1)
 sys.exit(0)
-" > /dev/null 2>&1; do
-    echo "[entrypoint] ${RABBIT_HOST}:${RABBIT_PORT} not ready yet, retrying..."
-    sleep 2
+" >/dev/null 2>&1; do
+	echo "[entrypoint] ${RABBIT_HOST}:${RABBIT_PORT} not ready yet, retrying..."
+	sleep 2
 done
 
 echo "[entrypoint] ${RABBIT_HOST}:${RABBIT_PORT} is reachable, running migrations"

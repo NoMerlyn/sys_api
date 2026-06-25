@@ -109,6 +109,7 @@ def create_app() -> FastAPI:
 
     # Liveness + readiness probes.
     from app.presentation.routers import health as _health_router
+
     app.include_router(_health_router.router)
 
     # Routers

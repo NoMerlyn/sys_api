@@ -27,9 +27,7 @@ class SalesSummaryQuery:
 class SalesSummaryHandler:
     """Aggregate stats for the top of the ReportsView."""
 
-    async def handle(
-        self, q: SalesSummaryQuery, session: AsyncSession
-    ) -> dict[str, object]:
+    async def handle(self, q: SalesSummaryQuery, session: AsyncSession) -> dict[str, object]:
         where_clauses = [Invoice.status == InvoiceStatus.CONFIRMED]
         if q.since is not None:
             where_clauses.append(Invoice.issue_date >= q.since)
@@ -49,12 +47,8 @@ class SalesSummaryHandler:
         ).one()
 
         # By status (kept compact: just count per status)
-        by_status_stmt = select(
-            Invoice.status, func.count(Invoice.id)
-        ).group_by(Invoice.status)
-        by_status = {
-            str(r[0]): r[1] for r in (await session.execute(by_status_stmt)).all()
-        }
+        by_status_stmt = select(Invoice.status, func.count(Invoice.id)).group_by(Invoice.status)
+        by_status = {str(r[0]): r[1] for r in (await session.execute(by_status_stmt)).all()}
 
         return {
             "total_invoices": int(total_invoices),
@@ -76,15 +70,15 @@ class TopProductsQuery:
 class TopProductsHandler:
     """Top-N products by total revenue in confirmed invoices."""
 
-    async def handle(
-        self, q: TopProductsQuery, session: AsyncSession
-    ) -> list[dict[str, object]]:
+    async def handle(self, q: TopProductsQuery, session: AsyncSession) -> list[dict[str, object]]:
         stmt = (
             select(
                 InvoiceDetail.product_id,
                 InvoiceDetail.product_name,
                 func.sum(InvoiceDetail.quantity).label("qty"),
-                func.sum(InvoiceDetail.unit_price_snapshot * InvoiceDetail.quantity).label("revenue"),
+                func.sum(InvoiceDetail.unit_price_snapshot * InvoiceDetail.quantity).label(
+                    "revenue"
+                ),
                 func.count(func.distinct(InvoiceDetail.invoice_id)).label("invoices"),
             )
             .join(Invoice, Invoice.id == InvoiceDetail.invoice_id)
@@ -121,9 +115,7 @@ class TopClientsQuery:
 class TopClientsHandler:
     """Top-N clients by total spent in confirmed invoices."""
 
-    async def handle(
-        self, q: TopClientsQuery, session: AsyncSession
-    ) -> list[dict[str, object]]:
+    async def handle(self, q: TopClientsQuery, session: AsyncSession) -> list[dict[str, object]]:
         stmt = (
             select(
                 Invoice.client_id,
@@ -164,9 +156,7 @@ class SalesByDayQuery:
 class SalesByDayHandler:
     """Daily revenue for the requested window (for line/bar charts)."""
 
-    async def handle(
-        self, q: SalesByDayQuery, session: AsyncSession
-    ) -> list[dict[str, object]]:
+    async def handle(self, q: SalesByDayQuery, session: AsyncSession) -> list[dict[str, object]]:
         day_col = func.date(Invoice.issue_date).label("day")
         stmt = (
             select(
@@ -204,9 +194,7 @@ class TopSellersQuery:
 class TopSellersHandler:
     """Top-N sellers by total sales."""
 
-    async def handle(
-        self, q: TopSellersQuery, session: AsyncSession
-    ) -> list[dict[str, object]]:
+    async def handle(self, q: TopSellersQuery, session: AsyncSession) -> list[dict[str, object]]:
         stmt = (
             select(
                 User.id,
