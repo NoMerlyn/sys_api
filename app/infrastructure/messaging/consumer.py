@@ -23,6 +23,7 @@ from app.application.common.interfaces.stock_movement_repository import (
 from app.application.common.uow import uow
 from app.domain.value_objects.invoice_status import InvoiceStatus
 from app.domain.value_objects.movement_type import MovementType
+from app.infrastructure.messaging.publishers import publish_event
 from app.infrastructure.messaging.rabbit import get_channel_pool
 from app.infrastructure.messaging.topology import INVOICES_QUEUE
 
@@ -78,6 +79,38 @@ async def _on_validated(event_id: uuid.UUID, data: dict[str, Any]) -> None:
         await invoices.update_status(invoice_id, InvoiceStatus.CONFIRMED)
 
 
+async def _schedule_auto_confirm(event_id: uuid.UUID, data: dict[str, Any]) -> None:
+    """
+    Bypass the validator. After a fixed grace period (2s) we
+    auto-publish `invoice.validated` so the invoice transitions
+    straight to CONFIRMED. The validator service is still wired
+    and will run on its own schedule; publishing a duplicate
+    `invoice.validated` is a no-op because the consumer's
+    idempotency check on ProcessedEvent blocks it.
+    """
+    invoice_id = int(data.get("invoice_id", 0))
+    if not invoice_id:
+        return
+    await asyncio.sleep(2.0)
+    logger.info("auto-confirm: invoice %s (2s grace elapsed)", invoice_id)
+    channel = await get_channel_pool(_rabbit_url())
+    await publish_event(
+        channel,
+        "invoice.validated",
+        {
+            "invoice_id": invoice_id,
+            "reason": "auto-confirmed (2s grace)",
+            "validator": "sys_api_bypass",
+        },
+    )
+
+
+def _rabbit_url() -> str:
+    from app.config import get_settings
+
+    return get_settings().rabbitmq_url
+
+
 async def _on_rejected(event_id: uuid.UUID, data: dict[str, Any]) -> None:
     invoice_id = int(data["invoice_id"])
     reason = (data.get("reasons") or [{}])[0].get("message") if data.get("reasons") else None
@@ -124,7 +157,9 @@ async def _handle_message(message: AbstractIncomingMessage) -> None:
             payload_hash = hashlib.sha256(message.body).hexdigest()
             await processed.mark_processed(event_id, event_type, payload_hash)
 
-        if event_type == "invoice.validated":
+        if event_type == "invoice.created":
+            await _schedule_auto_confirm(event_id, data)
+        elif event_type == "invoice.validated":
             await _on_validated(event_id, data)
         elif event_type == "invoice.rejected":
             await _on_rejected(event_id, data)

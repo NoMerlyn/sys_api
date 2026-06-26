@@ -25,9 +25,15 @@ class SqlClientRepository(IClientRepository):
         count_stmt = select(func.count()).select_from(Client).where(Client.is_active.is_(True))
         if search:
             pattern = f"%{search}%"
+            full_name = func.concat(
+                func.coalesce(Client.first_name, ""),
+                " ",
+                func.coalesce(Client.last_name, "")
+            )
             filt = or_(
                 Client.first_name.ilike(pattern),
                 Client.last_name.ilike(pattern),
+                full_name.ilike(pattern),
                 Client.email.ilike(pattern),
                 Client.cedula.ilike(pattern),
             )

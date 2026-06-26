@@ -26,6 +26,7 @@ from typing import Any
 
 from sqlalchemy import select
 
+from app.config import get_settings
 from app.core.security import hash_password
 from app.infrastructure.db.models import (
     Client,
@@ -35,7 +36,7 @@ from app.infrastructure.db.models import (
     User,
     UserRole,
 )
-from app.infrastructure.db.session import get_session_factory
+from app.infrastructure.db.session import get_session_factory, init_engine
 
 # ---------------------------------------------------------------------------
 # Deterministic RNG (mulberry32, matches Proyecto_A/pos-api).
@@ -83,17 +84,69 @@ rng = _Rng(20260608)
 # ---------------------------------------------------------------------------
 
 FIRST_NAMES: list[str] = [
-    "Juan", "María", "Carlos", "Ana", "Pedro", "Laura", "Diego", "Sofía",
-    "Martín", "Valentina", "Lucas", "Camila", "Sebastián", "Isabella", "Mateo",
-    "Lucía", "Nicolás", "Victoria", "Joaquín", "Martina", "Benjamín", "Catalina",
-    "Thiago", "Renata", "Gael", "Emilia", "Santiago", "Josefina", "Bautista", "Mía",
+    "Juan",
+    "María",
+    "Carlos",
+    "Ana",
+    "Pedro",
+    "Laura",
+    "Diego",
+    "Sofía",
+    "Martín",
+    "Valentina",
+    "Lucas",
+    "Camila",
+    "Sebastián",
+    "Isabella",
+    "Mateo",
+    "Lucía",
+    "Nicolás",
+    "Victoria",
+    "Joaquín",
+    "Martina",
+    "Benjamín",
+    "Catalina",
+    "Thiago",
+    "Renata",
+    "Gael",
+    "Emilia",
+    "Santiago",
+    "Josefina",
+    "Bautista",
+    "Mía",
 ]
 
 LAST_NAMES: list[str] = [
-    "Pérez", "García", "Rodríguez", "Martínez", "Sánchez", "López", "Fernández",
-    "Gómez", "Torres", "Díaz", "Ruiz", "Romero", "Alvarez", "Moreno", "Gutiérrez",
-    "González", "Hernández", "Jiménez", "Ramos", "Vázquez", "Domínguez", "Castro",
-    "Suárez", "Molina", "Delgado", "Iglesias", "Cortés", "Ortiz", "Marín", "Castillo",
+    "Pérez",
+    "García",
+    "Rodríguez",
+    "Martínez",
+    "Sánchez",
+    "López",
+    "Fernández",
+    "Gómez",
+    "Torres",
+    "Díaz",
+    "Ruiz",
+    "Romero",
+    "Alvarez",
+    "Moreno",
+    "Gutiérrez",
+    "González",
+    "Hernández",
+    "Jiménez",
+    "Ramos",
+    "Vázquez",
+    "Domínguez",
+    "Castro",
+    "Suárez",
+    "Molina",
+    "Delgado",
+    "Iglesias",
+    "Cortés",
+    "Ortiz",
+    "Marín",
+    "Castillo",
 ]
 
 # ---------------------------------------------------------------------------
@@ -248,16 +301,22 @@ async def seed() -> None:
     # Roles
     async with factory() as s:
         for name, code in [("ADMINISTRATOR", "ADMIN"), ("SELLER", "SELL")]:
-            if (await s.execute(select(Role).where(Role.name == name))).scalar_one_or_none() is None:
+            if (
+                await s.execute(select(Role).where(Role.name == name))
+            ).scalar_one_or_none() is None:
                 s.add(Role(name=name, code=code))
         await s.commit()
 
     # Taxes
     async with factory() as s:
-        for name, rate in [("IVA 15%", Decimal("15.00")), ("IVA 0%", Decimal("0.00"))]:
-            found_tax = (
-                await s.execute(select(Tax).where(Tax.name == name))
-            ).scalar_one_or_none()
+        for name, rate in [
+            ("IVA 0%", Decimal("0.00")),
+            ("IVA 5%", Decimal("5.00")),
+            ("IVA 12%", Decimal("12.00")),
+            ("IVA 14%", Decimal("14.00")),
+            ("IVA 15%", Decimal("15.00")),
+        ]:
+            found_tax = (await s.execute(select(Tax).where(Tax.name == name))).scalar_one_or_none()
             if found_tax is None:
                 s.add(Tax(name=name, current_rate=rate))
         await s.commit()
@@ -269,9 +328,7 @@ async def seed() -> None:
         admin_role = (
             await s.execute(select(Role).where(Role.name == "ADMINISTRATOR"))
         ).scalar_one()
-        seller_role = (
-            await s.execute(select(Role).where(Role.name == "SELLER"))
-        ).scalar_one()
+        seller_role = (await s.execute(select(Role).where(Role.name == "SELLER"))).scalar_one()
 
         for email, name, last, role in [
             (admin_email, "Admin", "POS", admin_role),
@@ -361,6 +418,8 @@ async def seed() -> None:
 
 
 async def main() -> None:
+    settings = get_settings()
+    init_engine(settings.database_url)
     await seed()
     factory = get_session_factory()
     async with factory() as s:

@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     database_url: Annotated[str, Field(alias="DATABASE_URL")]
     database_url_sync: Annotated[str, Field(alias="DATABASE_URL_SYNC")]
 
+    # Merchant / SRI
+    merchant_ruc: str = Field(default="1712345678001", validation_alias="MERCHANT_RUC")
+    merchant_name: str = Field(default="Micromercado El Vecino", validation_alias="MERCHANT_NAME")
+    merchant_address: str = Field(default="Av. de los Shyris N34-12 y Eloy Alfaro", validation_alias="MERCHANT_ADDRESS")
+    merchant_obligado_contabilidad: str = Field(default="SI", validation_alias="MERCHANT_OBLIGADO_CONTABILIDAD")
+
     # JWT
     jwt_secret: Annotated[str, Field(alias="JWT_SECRET")]
     jwt_algorithm: Annotated[str, Field(alias="JWT_ALGORITHM")] = "HS256"

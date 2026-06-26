@@ -42,6 +42,12 @@ class ChangeInvoiceStatusDto(BaseModel):
     reason: str | None = None
 
 
+class InvoiceItemTaxDto(BaseModel):
+    tax_id: int | None
+    rate_snapshot: Decimal | None
+    calculated_amount_snapshot: Decimal | None
+
+
 class InvoiceItemResponseDto(BaseModel):
     product_id: int | None
     product_name: str | None
@@ -51,12 +57,6 @@ class InvoiceItemResponseDto(BaseModel):
     taxes: list[InvoiceItemTaxDto] = Field(default_factory=list)
 
 
-class InvoiceItemTaxDto(BaseModel):
-    tax_id: int | None
-    rate_snapshot: Decimal | None
-    calculated_amount_snapshot: Decimal | None
-
-
 class InvoiceResponseDto(BaseModel):
     id: int
     invoice_number: str | None
@@ -64,10 +64,15 @@ class InvoiceResponseDto(BaseModel):
     issue_date: str | None
     client_id: int | None
     client_name_snapshot: str | None
+    client_cedula_snapshot: str | None = None
+    client_phone_snapshot: str | None = None
+    client_address_snapshot: str | None = None
     seller_id: int | None
     seller_name_snapshot: str | None
     subtotal_snapshot: Decimal | None
     tax_total_snapshot: Decimal | None
     total_snapshot: Decimal | None
     rejection_reason: str | None
+    clave_acceso_snapshot: str | None = None
+    sri_xml_snapshot: str | None = None
     items: list[InvoiceItemResponseDto] = Field(default_factory=list)

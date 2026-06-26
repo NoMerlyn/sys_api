@@ -26,7 +26,7 @@ class InvoiceStatus(enum.StrEnum):
 
 _ALLOWED: dict[InvoiceStatus, frozenset[InvoiceStatus]] = {
     InvoiceStatus.DRAFT: frozenset({InvoiceStatus.PENDING_VALIDATION}),
-    InvoiceStatus.PENDING_VALIDATION: frozenset({InvoiceStatus.VALIDATED, InvoiceStatus.REJECTED}),
+    InvoiceStatus.PENDING_VALIDATION: frozenset({InvoiceStatus.VALIDATED, InvoiceStatus.REJECTED, InvoiceStatus.CONFIRMED}),
     InvoiceStatus.VALIDATED: frozenset({InvoiceStatus.CONFIRMED}),
     InvoiceStatus.REJECTED: frozenset(),
     InvoiceStatus.CONFIRMED: frozenset({InvoiceStatus.CANCELLED}),

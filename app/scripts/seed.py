@@ -41,8 +41,11 @@ DEMO_USERS = [
 ]
 
 DEMO_TAXES: list[dict[str, Any]] = [
-    {"name": "IVA 15%", "current_rate": Decimal("15.00")},
     {"name": "IVA 0%", "current_rate": Decimal("0.00")},
+    {"name": "IVA 5%", "current_rate": Decimal("5.00")},
+    {"name": "IVA 12%", "current_rate": Decimal("12.00")},
+    {"name": "IVA 14%", "current_rate": Decimal("14.00")},
+    {"name": "IVA 15%", "current_rate": Decimal("15.00")},
 ]
 
 DEMO_PRODUCT_COUNT = 50

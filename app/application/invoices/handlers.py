@@ -45,6 +45,39 @@ def _q(value: Decimal) -> Decimal:
     return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
+class _TaxSpec:
+    """Duck-typed tax object for build_sri_xml."""
+    def __init__(self, rate_snapshot: Decimal, calculated_amount_snapshot: Decimal) -> None:
+        self.rate_snapshot = rate_snapshot
+        self.calculated_amount_snapshot = calculated_amount_snapshot
+
+
+class _DetailSpec:
+    """Duck-typed detail object for build_sri_xml."""
+    def __init__(self, product_id: int | None, product_name: str | None, quantity: int,
+                 unit_price_snapshot: Decimal, taxes: list) -> None:
+        self.product_id = product_id
+        self.product_name = product_name
+        self.quantity = quantity
+        self.unit_price_snapshot = unit_price_snapshot
+        self.detail_taxes = taxes
+
+
+def _specs_to_details(line_specs: list) -> list:
+    """Convert line_specs (CreateInvoiceHandler internal data) to duck-typed detail objects."""
+    result = []
+    for s in line_specs:
+        taxes = [_TaxSpec(t["rate_snapshot"], t["calculated_amount_snapshot"]) for t in s["taxes"]]
+        result.append(_DetailSpec(
+            product_id=s["product"].id,
+            product_name=s["product"].name,
+            quantity=s["quantity"],
+            unit_price_snapshot=s["unit_price"],
+            taxes=taxes,
+        ))
+    return result
+
+
 def _to_dto(inv: Any) -> InvoiceResponseDto:
     items: list = []  # populated as InvoiceItemResponseDto below
     for d in inv.details or []:
@@ -76,12 +109,17 @@ def _to_dto(inv: Any) -> InvoiceResponseDto:
         issue_date=inv.issue_date.isoformat() if inv.issue_date else None,
         client_id=inv.client_id,
         client_name_snapshot=inv.client_name_snapshot,
+        client_cedula_snapshot=inv.client_cedula_snapshot,
+        client_phone_snapshot=inv.client_phone_snapshot,
+        client_address_snapshot=inv.client_address_snapshot,
         seller_id=inv.user_id,
         seller_name_snapshot=inv.seller_name_snapshot,
         subtotal_snapshot=inv.subtotal_snapshot,
         tax_total_snapshot=inv.tax_total_snapshot,
         total_snapshot=inv.total_snapshot,
         rejection_reason=inv.rejection_reason,
+        clave_acceso_snapshot=inv.clave_acceso_snapshot,
+        sri_xml_snapshot=inv.sri_xml_snapshot,
         items=items,
     )
 
@@ -194,7 +232,7 @@ class CreateInvoiceHandler:
                 )
 
             # 3) Resolve client + seller snapshots.
-            client_name = client_email = None
+            client_name = client_email = client_cedula = client_phone = client_address = None
             if cmd.dto.client_id is not None:
                 c = await clients.find_by_id(cmd.dto.client_id)
                 if c is None:
@@ -203,6 +241,13 @@ class CreateInvoiceHandler:
                     f"{(c.first_name or '').strip()} {(c.last_name or '').strip()}".strip() or None
                 )
                 client_email = c.email
+                client_cedula = c.cedula
+                client_phone = c.phone
+                client_address = c.address
+            else:
+                client_name = "CONSUMIDOR FINAL"
+                client_cedula = "9999999999999"
+                client_address = "N/A"
 
             seller = await users.find_by_id(cmd.seller_id)
             if seller is None:
@@ -227,6 +272,9 @@ class CreateInvoiceHandler:
                 payment_method=PaymentMethod.CASH,
                 client_name_snapshot=client_name,
                 client_email_snapshot=client_email,
+                client_cedula_snapshot=client_cedula,
+                client_phone_snapshot=client_phone,
+                client_address_snapshot=client_address,
                 seller_name_snapshot=seller_name,
             )
             invoice = await invoices.create(invoice)
@@ -250,6 +298,41 @@ class CreateInvoiceHandler:
                             calculated_amount_snapshot=tx["calculated_amount_snapshot"],
                         )
                     )
+            await session.flush()
+
+            # Generate Access Key and SRI XML Snapshot
+            from datetime import datetime
+
+            from app.config import get_settings
+            from app.core.sri import build_sri_xml, generate_access_key
+
+            settings = get_settings()
+            issue_date = invoice.issue_date or datetime.now()
+            date_str = issue_date.strftime("%d%m%Y")
+            seq_number = "000000001"
+            if invoice.invoice_number:
+                digits = "".join(char for char in invoice.invoice_number if char.isdigit())
+                if digits:
+                    seq_number = f"{int(digits):09d}"
+
+            access_key = generate_access_key(
+                date_str=date_str,
+                cod_doc="01",
+                ruc=settings.merchant_ruc,
+                environment="1" if settings.env == "dev" else "2",
+                establishment="001",
+                emission_point="001",
+                sequential=seq_number
+            )
+            invoice.clave_acceso_snapshot = access_key
+
+            # Get client safely
+            client_obj = None
+            if cmd.dto.client_id is not None:
+                client_obj = await clients.find_by_id(cmd.dto.client_id)
+
+            xml_str = build_sri_xml(invoice, client_obj, settings, preloaded_details=_specs_to_details(line_specs))
+            invoice.sri_xml_snapshot = xml_str
             await session.flush()
 
             # 5) Publish `invoice.created` for the validator.
@@ -301,6 +384,14 @@ class CreateInvoiceHandler:
                     with contextlib.suppress(Exception):
                         await channel.close()
 
+            # Auto-confirm after 2 seconds (demo mode).
+            import asyncio as _asyncio
+            invoice_id_for_confirm = invoice.id
+            _asyncio.get_event_loop().call_later(
+                2.0,
+                lambda: _asyncio.ensure_future(_auto_confirm_invoice(invoice_id_for_confirm))
+            )
+
             return invoice.id
 
 
@@ -308,6 +399,22 @@ def get_settings_for_publisher():
     from app.config import get_settings
 
     return get_settings().rabbitmq_url
+
+
+async def _auto_confirm_invoice(invoice_id: int) -> None:
+    """Background task: confirm invoice after a short delay (demo mode)."""
+    import asyncio
+    await asyncio.sleep(0)  # yield once so the task runs cleanly
+    try:
+        from app.application.common.uow import uow
+        from app.infrastructure.repositories.invoice_repository import SqlInvoiceRepository
+        async with uow() as session:
+            repo = SqlInvoiceRepository(session)
+            inv = await repo.find_by_id(invoice_id)
+            if inv is not None and inv.status == InvoiceStatus.PENDING_VALIDATION:
+                await repo.update_status(invoice_id, InvoiceStatus.CONFIRMED)
+    except Exception:
+        pass
 
 
 @dataclass(frozen=True, slots=True)
@@ -340,6 +447,17 @@ class UpdateInvoiceHandler:
                 )
             if cmd.dto.client_id is not None:
                 inv.client_id = cmd.dto.client_id
+                clients_repo = self._clients.__class__(session)  # type: ignore[call-arg]
+                c = await clients_repo.find_by_id(cmd.dto.client_id)
+                if c is None:
+                    raise NotFoundError(f"Cliente {cmd.dto.client_id} no existe")
+                inv.client_name_snapshot = (
+                    f"{(c.first_name or '').strip()} {(c.last_name or '').strip()}".strip() or None
+                )
+                inv.client_email_snapshot = c.email
+                inv.client_cedula_snapshot = c.cedula
+                inv.client_phone_snapshot = c.phone
+                inv.client_address_snapshot = c.address
             if cmd.dto.items is not None:
                 # Replace details wholesale (snapshot fields re-computed).
                 from app.infrastructure.db.models.invoice_detail import InvoiceDetail
@@ -387,6 +505,42 @@ class UpdateInvoiceHandler:
                 inv.tax_total_snapshot = tax_total
                 inv.total_snapshot = _q(subtotal + tax_total)
             await session.flush()
+
+            # Re-generate clave_acceso and sri_xml
+            from datetime import datetime
+
+            from app.config import get_settings
+            from app.core.sri import build_sri_xml, generate_access_key
+
+            settings = get_settings()
+            issue_date = inv.issue_date or datetime.now()
+            date_str = issue_date.strftime("%d%m%Y")
+            seq_number = "000000001"
+            if inv.invoice_number:
+                digits = "".join(char for char in inv.invoice_number if char.isdigit())
+                if digits:
+                    seq_number = f"{int(digits):09d}"
+
+            access_key = generate_access_key(
+                date_str=date_str,
+                cod_doc="01",
+                ruc=settings.merchant_ruc,
+                environment="1" if settings.env == "dev" else "2",
+                establishment="001",
+                emission_point="001",
+                sequential=seq_number
+            )
+            inv.clave_acceso_snapshot = access_key
+
+            client_obj = None
+            if inv.client_id is not None:
+                clients_repo = self._clients.__class__(session)  # type: ignore[call-arg]
+                client_obj = await clients_repo.find_by_id(inv.client_id)
+
+            xml_str = build_sri_xml(inv, client_obj, settings)
+            inv.sri_xml_snapshot = xml_str
+            await session.flush()
+
             return _to_dto(inv)
 
 

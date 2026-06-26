@@ -20,6 +20,7 @@ from sqlalchemy import (
     Integer,
     Numeric,
     String,
+    Text,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -82,6 +83,11 @@ class Invoice(Base, SoftDeleteMixin):
     version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     client_name_snapshot: Mapped[str | None] = mapped_column(String(255), nullable=True)
     client_email_snapshot: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    client_cedula_snapshot: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    client_phone_snapshot: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    client_address_snapshot: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    clave_acceso_snapshot: Mapped[str | None] = mapped_column(String(49), nullable=True)
+    sri_xml_snapshot: Mapped[str | None] = mapped_column(Text, nullable=True)
     seller_name_snapshot: Mapped[str | None] = mapped_column(String(255), nullable=True)
     parent_invoice_id: Mapped[int | None] = mapped_column(
         ForeignKey("invoices.id", ondelete="SET NULL"), nullable=True

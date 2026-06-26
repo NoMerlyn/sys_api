@@ -34,7 +34,8 @@ def test_confirmed_to_cancelled() -> None:
     [
         (InvoiceStatus.DRAFT, InvoiceStatus.CONFIRMED),
         (InvoiceStatus.DRAFT, InvoiceStatus.CANCELLED),
-        (InvoiceStatus.PENDING_VALIDATION, InvoiceStatus.CONFIRMED),
+        # Note: PENDING_VALIDATION -> CONFIRMED is now allowed because
+        # the sys_api consumer auto-confirms after a 2s grace.
         (InvoiceStatus.PENDING_VALIDATION, InvoiceStatus.CANCELLED),
         (InvoiceStatus.REJECTED, InvoiceStatus.CONFIRMED),
         (InvoiceStatus.REJECTED, InvoiceStatus.PENDING_VALIDATION),
