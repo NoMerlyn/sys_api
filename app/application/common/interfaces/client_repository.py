@@ -14,8 +14,11 @@ class IClientRepository(ABC):
     async def find_by_id(self, client_id: int) -> Any: ...
 
     @abstractmethod
+    async def find_by_cedula(self, cedula: str) -> Any: ...
+
+    @abstractmethod
     async def find_all(
-        self, page: Page, search: str | None = None
+        self, page: Page, search: str | None = None, is_active: bool | None = None
     ) -> tuple[Sequence[Any], int]: ...
 
     @abstractmethod

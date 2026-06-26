@@ -77,13 +77,26 @@ async def get_product(_: CurrentUserDep, product_id: int) -> ProductResponseDto:
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_role("ADMINISTRATOR"))],
 )
-async def create_product(_: CurrentUserDep, payload: CreateProductDto) -> ProductResponseDto:
+async def create_product(user: CurrentUserDep, payload: CreateProductDto) -> ProductResponseDto:
     async with uow() as session:
         from app.infrastructure.repositories.product_repository import SqlProductRepository
-
-        create_h = CreateProductHandler(SqlProductRepository(session))
+        repo = SqlProductRepository(session)
+        create_h = CreateProductHandler(repo)
         product_id = await create_h.handle(CreateProductCommand(dto=payload))
-        get_h = GetProductHandler(SqlProductRepository(session))
+        
+        # Audit creation
+        import json
+        from app.application.audit import audit
+        async with audit(session) as log:
+            await log.add(
+                action="CREATE",
+                entity="PRODUCT",
+                entity_id=product_id,
+                user_id=user.id,
+                detail=json.dumps(payload.model_dump(), ensure_ascii=False)
+            )
+            
+        get_h = GetProductHandler(repo)
         return await get_h.handle(GetProductQuery(product_id=product_id))
 
 
@@ -93,13 +106,46 @@ async def create_product(_: CurrentUserDep, payload: CreateProductDto) -> Produc
     dependencies=[Depends(require_role("ADMINISTRATOR"))],
 )
 async def update_product(
-    _: CurrentUserDep, product_id: int, payload: UpdateProductDto
+    user: CurrentUserDep, product_id: int, payload: UpdateProductDto
 ) -> ProductResponseDto:
     async with uow() as session:
         from app.infrastructure.repositories.product_repository import SqlProductRepository
-
-        handler = UpdateProductHandler(SqlProductRepository(session))
-        return await handler.handle(UpdateProductCommand(product_id=product_id, dto=payload))
+        repo = SqlProductRepository(session)
+        
+        old_prod = await repo.find_by_id(product_id)
+        before_state = {}
+        if old_prod:
+            before_state = {
+                "name": old_prod.name,
+                "price": float(old_prod.price),
+                "stock": old_prod.stock,
+            }
+            
+        handler = UpdateProductHandler(repo)
+        res = await handler.handle(UpdateProductCommand(product_id=product_id, dto=payload))
+        
+        after_state = {
+            "name": res.name,
+            "price": float(res.price),
+            "stock": res.stock,
+        }
+        
+        # Audit update
+        import json
+        from app.application.audit import audit
+        async with audit(session) as log:
+            await log.add(
+                action="UPDATE",
+                entity="PRODUCT",
+                entity_id=product_id,
+                user_id=user.id,
+                detail=json.dumps({
+                    "before": before_state,
+                    "after": after_state
+                }, ensure_ascii=False),
+            )
+            
+        return res
 
 
 @router.delete(
@@ -107,9 +153,22 @@ async def update_product(
     status_code=status.HTTP_204_NO_CONTENT,
     dependencies=[Depends(require_role("ADMINISTRATOR"))],
 )
-async def delete_product(_: CurrentUserDep, product_id: int) -> None:
+async def delete_product(user: CurrentUserDep, product_id: int) -> None:
     async with uow() as session:
         from app.infrastructure.repositories.product_repository import SqlProductRepository
-
-        handler = DeleteProductHandler(SqlProductRepository(session))
+        repo = SqlProductRepository(session)
+        
+        handler = DeleteProductHandler(repo)
         await handler.handle(DeleteProductCommand(product_id=product_id))
+        
+        # Audit deletion
+        import json
+        from app.application.audit import audit
+        async with audit(session) as log:
+            await log.add(
+                action="STATUS_CHANGE",
+                entity="PRODUCT",
+                entity_id=product_id,
+                user_id=user.id,
+                detail=json.dumps({"is_active": False, "deleted": True}, ensure_ascii=False),
+            )

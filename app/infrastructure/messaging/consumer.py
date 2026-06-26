@@ -74,6 +74,31 @@ async def _on_validated(event_id: uuid.UUID, data: dict[str, Any]) -> None:
                     reference=f"invoice:{invoice_id}:confirmed",
                 )
             )
+            # Audit log: stock change due to sale
+            import json as _json
+
+            from app.infrastructure.db.models.audit_log import AuditLog
+
+            product_obj = await products.find_by_id(d.product_id)
+            product_name = product_obj.name if product_obj else f"producto:{d.product_id}"
+            session.add(
+                AuditLog(
+                    action="STOCK_CHANGE",
+                    entity="Product",
+                    entity_id=d.product_id,
+                    detail=_json.dumps(
+                        {
+                            "motivo": "venta",
+                            "factura_id": invoice_id,
+                            "producto": product_name,
+                            "cantidad_vendida": int(d.quantity),
+                            "before": {"stock": previous},
+                            "after": {"stock": new_stock},
+                        },
+                        ensure_ascii=False,
+                    ),
+                )
+            )
         # Single transition: PENDING_VALIDATION -> VALIDATED -> CONFIRMED.
         await invoices.update_status(invoice_id, InvoiceStatus.VALIDATED)
         await invoices.update_status(invoice_id, InvoiceStatus.CONFIRMED)

@@ -126,6 +126,7 @@ async def create_invoice(user: CurrentUserDep, payload: CreateInvoiceDto) -> Inv
         )
         invoice_id = await handler.handle(CreateInvoiceCommand(dto=payload, seller_id=user.id))
         # Audit the create.
+        import json
         from app.application.audit import audit
         async with audit(session) as log:
             await log.add(
@@ -133,7 +134,10 @@ async def create_invoice(user: CurrentUserDep, payload: CreateInvoiceDto) -> Inv
                 entity="INVOICE",
                 entity_id=invoice_id,
                 user_id=user.id,
-                detail=f"client_id={payload.client_id}, items={len(payload.items)}",
+                detail=json.dumps({
+                    "client_id": payload.client_id,
+                    "items": [{"product_id": it.product_id, "quantity": it.quantity} for it in payload.items]
+                }, ensure_ascii=False),
             )
         get_h = GetInvoiceHandler(SqlInvoiceRepository(session))
         return await get_h.handle(GetInvoiceQuery(invoice_id=invoice_id))
@@ -184,6 +188,20 @@ async def change_invoice_status(
             SqlProductRepository(session),
             SqlStockMovementRepository(session),
         )
-        return await handler.handle(
+        res = await handler.handle(
             ChangeInvoiceStatusCommand(invoice_id=invoice_id, dto=payload, actor_id=user.id)
         )
+        import json
+        from app.application.audit import audit
+        async with audit(session) as log:
+            await log.add(
+                action="STATUS_CHANGE",
+                entity="INVOICE",
+                entity_id=invoice_id,
+                user_id=user.id,
+                detail=json.dumps({
+                    "status": payload.status,
+                    "reason": payload.reason
+                }, ensure_ascii=False),
+            )
+        return res

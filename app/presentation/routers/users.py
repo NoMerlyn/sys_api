@@ -99,33 +99,95 @@ async def get_user(_: CurrentUserDep, user_id: int) -> UserResponseDto:
 
 
 @router.post("", response_model=UserResponseDto, status_code=status.HTTP_201_CREATED)
-async def create_user(_: CurrentUserDep, payload: CreateUserDto) -> UserResponseDto:
+async def create_user(currentUser: CurrentUserDep, payload: CreateUserDto) -> UserResponseDto:
     async with uow() as session:
         from app.infrastructure.repositories.role_repository import SqlRoleRepository
         from app.infrastructure.repositories.user_repository import SqlUserRepository
 
         handler = CreateUserHandler(SqlUserRepository(session), SqlRoleRepository(session))
         user_id = await handler.handle(CreateUserCommand(dto=payload))
+        
+        # Audit user creation
+        import json
+        from app.application.audit import audit
+        async with audit(session) as log:
+            await log.add(
+                action="CREATE",
+                entity="USER",
+                entity_id=user_id,
+                user_id=currentUser.id,
+                detail=json.dumps(payload.model_dump(exclude={"password"}), ensure_ascii=False),
+            )
+            
         me_handler = GetUserHandler(SqlUserRepository(session))
         return await me_handler.handle(GetUserQuery(user_id=user_id))
 
 
 @router.put("/{user_id}", response_model=UserResponseDto)
-async def update_user(_: CurrentUserDep, user_id: int, payload: UpdateUserDto) -> UserResponseDto:
+async def update_user(currentUser: CurrentUserDep, user_id: int, payload: UpdateUserDto) -> UserResponseDto:
     async with uow() as session:
         from app.infrastructure.repositories.user_repository import SqlUserRepository
+        repo = SqlUserRepository(session)
+        
+        old_user = await repo.find_by_id(user_id)
+        before_state = {}
+        if old_user:
+            before_state = {
+                "name": old_user.name,
+                "last_name": old_user.last_name,
+                "cedula": old_user.cedula,
+                "email": old_user.email,
+                "is_active": old_user.is_active,
+            }
 
-        handler = UpdateUserHandler(SqlUserRepository(session))
-        return await handler.handle(UpdateUserCommand(user_id=user_id, dto=payload))
+        handler = UpdateUserHandler(repo)
+        res = await handler.handle(UpdateUserCommand(user_id=user_id, dto=payload))
+        
+        after_state = {
+            "name": res.name,
+            "last_name": res.last_name,
+            "cedula": res.cedula,
+            "email": res.email,
+            "is_active": res.is_active,
+        }
+        
+        # Audit user update
+        import json
+        from app.application.audit import audit
+        async with audit(session) as log:
+            await log.add(
+                action="UPDATE",
+                entity="USER",
+                entity_id=user_id,
+                user_id=currentUser.id,
+                detail=json.dumps({
+                    "before": before_state,
+                    "after": after_state
+                }, ensure_ascii=False),
+            )
+            
+        return res
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_user(_: CurrentUserDep, user_id: int) -> None:
+async def delete_user(currentUser: CurrentUserDep, user_id: int) -> None:
     async with uow() as session:
         from app.infrastructure.repositories.user_repository import SqlUserRepository
 
         handler = DeleteUserHandler(SqlUserRepository(session))
         await handler.handle(DeleteUserCommand(user_id=user_id))
+        
+        # Audit user status change (soft delete)
+        import json
+        from app.application.audit import audit
+        async with audit(session) as log:
+            await log.add(
+                action="STATUS_CHANGE",
+                entity="USER",
+                entity_id=user_id,
+                user_id=currentUser.id,
+                detail=json.dumps({"is_active": False}, ensure_ascii=False),
+            )
 
 
 @router.post("/{user_id}/unlock", status_code=status.HTTP_204_NO_CONTENT)
@@ -150,10 +212,39 @@ async def get_user_roles(_: CurrentUserDep, user_id: int) -> list[dict]:
 
 
 @router.put("/{user_id}/roles", response_model=UserResponseDto)
-async def assign_roles(_: CurrentUserDep, user_id: int, payload: AssignRolesDto) -> UserResponseDto:
+async def assign_roles(currentUser: CurrentUserDep, user_id: int, payload: AssignRolesDto) -> UserResponseDto:
     async with uow() as session:
         from app.infrastructure.repositories.role_repository import SqlRoleRepository
         from app.infrastructure.repositories.user_repository import SqlUserRepository
+        repo = SqlUserRepository(session)
+        
+        old_user = await repo.find_by_id(user_id)
+        before_state = {}
+        if old_user:
+            before_state = {
+                "roles": [r.name for r in (old_user.roles or [])]
+            }
 
-        handler = AssignRolesHandler(SqlUserRepository(session), SqlRoleRepository(session))
-        return await handler.handle(AssignRolesCommand(user_id=user_id, role_ids=payload.role_ids))
+        handler = AssignRolesHandler(repo, SqlRoleRepository(session))
+        res = await handler.handle(AssignRolesCommand(user_id=user_id, role_ids=payload.role_ids))
+        
+        after_state = {
+            "roles": res.roles
+        }
+        
+        # Audit user roles update
+        import json
+        from app.application.audit import audit
+        async with audit(session) as log:
+            await log.add(
+                action="UPDATE",
+                entity="USER",
+                entity_id=user_id,
+                user_id=currentUser.id,
+                detail=json.dumps({
+                    "before": before_state,
+                    "after": after_state
+                }, ensure_ascii=False),
+            )
+            
+        return res

@@ -85,12 +85,14 @@ class GetAuditLogsHandler:
         self._audit = audit_repo
 
     async def handle(self, q: GetAuditLogsQuery) -> tuple[list[dict], int]:
-        async with audit(self._audit.__class__.__new__(self._audit.__class__)) as repo:  # type: ignore[arg-type]
-            return await repo.list(
-                page=q.page,
-                limit=q.limit,
-                action=q.action,
-                entity=q.entity,
-                user_id=q.user_id,
-                since=q.since,
-            )
+        from app.application.common.uow import uow
+        async with uow() as session:
+            async with audit(session) as repo:
+                return await repo.list(
+                    page=q.page,
+                    limit=q.limit,
+                    action=q.action,
+                    entity=q.entity,
+                    user_id=q.user_id,
+                    since=q.since,
+                )

@@ -2,17 +2,28 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
+
+from app.domain.value_objects.cedula import Cedula
 
 
 class CreateUserDto(BaseModel):
-    username: str = Field(min_length=3, max_length=50)
+    username: str = Field(min_length=3, max_length=30)
     name: str = Field(min_length=1, max_length=100)
     last_name: str = Field(min_length=1, max_length=100)
     cedula: str | None = Field(default=None, max_length=20)
     email: EmailStr
     password: str = Field(min_length=8, max_length=10)
     role_ids: list[int] = Field(default_factory=list)
+
+    @field_validator("cedula")
+    @classmethod
+    def _validate_cedula(cls, value: str | None) -> str | None:
+        if value is None or value == "":
+            return None
+        cleaned = value.strip().replace(" ", "").replace("-", "")
+        Cedula(cleaned)
+        return cleaned
 
 
 class UpdateUserDto(BaseModel):
@@ -21,6 +32,15 @@ class UpdateUserDto(BaseModel):
     cedula: str | None = Field(default=None, max_length=20)
     email: EmailStr | None = None
     is_active: bool | None = None
+
+    @field_validator("cedula")
+    @classmethod
+    def _validate_cedula(cls, value: str | None) -> str | None:
+        if value is None or value == "":
+            return None
+        cleaned = value.strip().replace(" ", "").replace("-", "")
+        Cedula(cleaned)
+        return cleaned
 
 
 class AssignRolesDto(BaseModel):

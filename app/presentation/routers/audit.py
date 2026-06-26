@@ -14,8 +14,8 @@ from app.application.audit import (
 from app.application.common.interfaces.audit_log_repository import (
     AuditLogRepository,
 )
-from app.core.deps import require_admin
 from app.core.pagination import PaginatedResponse
+from app.presentation.deps import require_role
 from app.infrastructure.repositories.audit_log_repository import (
     SqlAuditLogRepository,
 )
@@ -31,7 +31,7 @@ def _audit_repo() -> AuditLogRepository:
 
 @router.get("", response_model=PaginatedResponse)
 async def list_audit_logs(
-    _admin: Annotated[object, Depends(require_admin)],
+    _admin: Annotated[object, Depends(require_role("ADMINISTRATOR"))],
     page: int = Query(1, ge=1),
     limit: int = Query(50, ge=1, le=200),
     action: str | None = None,

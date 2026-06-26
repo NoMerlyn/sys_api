@@ -57,6 +57,9 @@ class LoginHandler:
             user = await users.find_by_email(cmd.email)
             assert user is not None
 
+            if not user.is_active:
+                raise AuthError("Cuenta desactivada. Contacte al administrador.")
+
             if user.blocked_at is not None:
                 raise AccountBlockedError("Cuenta bloqueada tras múltiples intentos fallidos")
 

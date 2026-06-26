@@ -20,9 +20,12 @@ class SqlClientRepository(IClientRepository):
         result = await self._session.execute(select(Client).where(Client.id == client_id))
         return result.scalar_one_or_none()
 
-    async def find_all(self, page: Page, search: str | None = None) -> tuple[Sequence[Client], int]:
-        stmt = select(Client).where(Client.is_active.is_(True))
-        count_stmt = select(func.count()).select_from(Client).where(Client.is_active.is_(True))
+    async def find_all(self, page: Page, search: str | None = None, is_active: bool | None = None) -> tuple[Sequence[Client], int]:
+        stmt = select(Client)
+        count_stmt = select(func.count()).select_from(Client)
+        if is_active is not None:
+            stmt = stmt.where(Client.is_active == is_active)
+            count_stmt = count_stmt.where(Client.is_active == is_active)
         if search:
             pattern = f"%{search}%"
             full_name = func.concat(
@@ -59,3 +62,7 @@ class SqlClientRepository(IClientRepository):
             return
         client.soft_delete()
         await self._session.flush()
+
+    async def find_by_cedula(self, cedula: str) -> Client | None:
+        result = await self._session.execute(select(Client).where(Client.cedula == cedula))
+        return result.scalar_one_or_none()

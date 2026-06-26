@@ -12,7 +12,7 @@ from app.application.clients.dto import (
 )
 from app.application.common.interfaces.client_repository import IClientRepository
 from app.application.common.uow import uow
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import BusinessError, NotFoundError
 from app.core.pagination import Page
 
 
@@ -33,6 +33,7 @@ def _to_dto(c: Any) -> ClientResponseDto:
 class ListClientsQuery:
     page: Page
     search: str | None = None
+    is_active: bool | None = None
 
 
 class ListClientsHandler:
@@ -42,7 +43,7 @@ class ListClientsHandler:
     async def handle(self, cmd: ListClientsQuery) -> tuple[list[ClientResponseDto], int]:
         async with uow() as session:
             clients = self._clients.__class__(session)  # type: ignore[call-arg]
-            rows, total = await clients.find_all(cmd.page, cmd.search)
+            rows, total = await clients.find_all(cmd.page, cmd.search, is_active=cmd.is_active)
             return [_to_dto(c) for c in rows], total
 
 
@@ -76,6 +77,12 @@ class CreateClientHandler:
     async def handle(self, cmd: CreateClientCommand) -> int:
         async with uow() as session:
             clients = self._clients.__class__(session)  # type: ignore[call-arg]
+            if cmd.dto.cedula:
+                if await clients.find_by_cedula(cmd.dto.cedula) is not None:
+                    raise BusinessError(
+                        f"Cédula duplicada: {cmd.dto.cedula}",
+                        details={"field": "cedula"},
+                    )
             from app.infrastructure.db.models.client import Client
 
             row = Client(
@@ -106,10 +113,19 @@ class UpdateClientHandler:
             c = await clients.find_by_id(cmd.client_id)
             if c is None:
                 raise NotFoundError(f"Cliente {cmd.client_id} no encontrado")
-            for field in ("first_name", "last_name", "cedula", "phone", "address", "email"):
+            for field in ("first_name", "last_name", "phone", "address", "email"):
                 value = getattr(cmd.dto, field)
                 if value is not None:
                     setattr(c, field, value)
+            if cmd.dto.cedula is not None:
+                if cmd.dto.cedula:
+                    existing_cedula = await clients.find_by_cedula(cmd.dto.cedula)
+                    if existing_cedula is not None and existing_cedula.id != cmd.client_id:
+                        raise BusinessError(
+                            f"Cédula duplicada: {cmd.dto.cedula}",
+                            details={"field": "cedula"},
+                        )
+                c.cedula = cmd.dto.cedula
             if cmd.dto.is_active is not None:
                 c.is_active = cmd.dto.is_active
             await clients.update(c)

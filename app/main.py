@@ -19,6 +19,7 @@ from app.core.exceptions import (
     BusinessError,
     app_error_handler,
     business_exception_handler,
+    global_exception_handler,
 )
 from app.core.rate_limit import limiter
 from app.infrastructure.db.session import dispose_engine, init_engine
@@ -81,6 +82,7 @@ def create_app() -> FastAPI:
 
     app.add_exception_handler(AppError, app_error_handler)  # type: ignore[arg-type]
     app.add_exception_handler(BusinessError, business_exception_handler)  # type: ignore[arg-type]
+    app.add_exception_handler(Exception, global_exception_handler)  # type: ignore[arg-type]
 
     @app.exception_handler(RateLimitExceeded)
     async def _rate_limit_handler(_: Request, exc: RateLimitExceeded) -> JSONResponse:
@@ -113,9 +115,11 @@ def create_app() -> FastAPI:
     app.include_router(_health_router.router)
 
     # Routers
+    from app.presentation.routers import audit as audit_router
     from app.presentation.routers import auth as auth_router
     from app.presentation.routers import clients as clients_router
     from app.presentation.routers import products as products_router
+    from app.presentation.routers import reports as reports_router
     from app.presentation.routers import roles as roles_router
     from app.presentation.routers import taxes as taxes_router
     from app.presentation.routers import users as users_router
@@ -126,6 +130,8 @@ def create_app() -> FastAPI:
     app.include_router(clients_router.router, prefix="/api")
     app.include_router(products_router.router, prefix="/api")
     app.include_router(taxes_router.router, prefix="/api")
+    app.include_router(audit_router.router, prefix="/api")
+    app.include_router(reports_router.router, prefix="/api")
 
     # Invoices router
     from app.presentation.routers import invoice_pdf as invoice_pdf_router

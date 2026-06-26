@@ -20,6 +20,9 @@ class IUserRepository(ABC):
     async def find_by_username(self, username: str) -> Any: ...
 
     @abstractmethod
+    async def find_by_cedula(self, cedula: str) -> Any: ...
+
+    @abstractmethod
     async def find_all(
         self, page: Page, search: str | None = None
     ) -> tuple[Sequence[Any], int]: ...

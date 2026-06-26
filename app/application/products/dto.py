@@ -8,14 +8,14 @@ from pydantic import BaseModel, Field
 
 
 class CreateProductDto(BaseModel):
-    name: str = Field(min_length=1, max_length=255)
+    name: str = Field(min_length=1, max_length=20)
     price: Decimal = Field(ge=0)
     stock: int = Field(ge=0)
     is_active: bool = True
 
 
 class UpdateProductDto(BaseModel):
-    name: str | None = Field(default=None, max_length=255)
+    name: str | None = Field(default=None, max_length=20)
     price: Decimal | None = Field(default=None, ge=0)
     stock: int | None = Field(default=None, ge=0)
     is_active: bool | None = None

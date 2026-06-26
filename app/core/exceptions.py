@@ -79,6 +79,10 @@ class AccountBlockedError(AppError):
     http_status = 423
 
 
+import traceback
+import json
+
+
 async def app_error_handler(_: Request, exc: AppError) -> JSONResponse:
     logger.warning("AppError: %s — %s", exc.code, exc.message)
     return JSONResponse(
@@ -103,7 +107,65 @@ async def business_exception_handler(_: Request, exc: BusinessError) -> JSONResp
     )
 
 
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    logger.exception("Unhandled Exception: %s", str(exc))
+    
+    user_id = None
+    auth_header = request.headers.get("authorization")
+    if auth_header and auth_header.lower().startswith("bearer "):
+        token = auth_header[7:].strip()
+        try:
+            from app.config import get_settings
+            from app.core.security import decode_access_token
+            settings = get_settings()
+            payload = decode_access_token(
+                token,
+                secret=settings.jwt_secret,
+                issuer=settings.jwt_issuer,
+                audience=settings.jwt_audience,
+                algorithm=settings.jwt_algorithm,
+            )
+            user_id = int(payload["sub"])
+        except Exception:
+            pass
+
+    stack = traceback.format_exc()
+    error_data = {
+        "message": str(exc),
+        "exception_type": exc.__class__.__name__,
+        "path": request.url.path,
+        "method": request.method,
+        "query_params": dict(request.query_params),
+    }
+
+    try:
+        from app.application.common.uow import uow
+        from app.infrastructure.db.models.error_log import ErrorLog
+        async with uow() as session:
+            log = ErrorLog(
+                message=json.dumps(error_data, ensure_ascii=False),
+                stack_trace=stack,
+                exception_type=exc.__class__.__name__,
+                user_id=user_id,
+                path=request.url.path,
+                source="global_exception_handler"
+            )
+            session.add(log)
+    except Exception as db_exc:
+        logger.exception("Failed to persist error log: %s", db_exc)
+
+    return JSONResponse(
+        status_code=500,
+        content={
+            "code": "INTERNAL_SERVER_ERROR",
+            "message": "Ocurrió un error interno en la plataforma.",
+            "details": {"message": str(exc)}
+        }
+    )
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     """Alternative manual registration if create_app is bypassed."""
     app.add_exception_handler(AppError, app_error_handler)  # type: ignore[arg-type]
     app.add_exception_handler(BusinessError, business_exception_handler)  # type: ignore[arg-type]
+    app.add_exception_handler(Exception, global_exception_handler)

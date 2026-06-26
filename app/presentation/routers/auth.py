@@ -80,6 +80,7 @@ async def login(request: Request, payload: LoginDto) -> AuthResponseDto:
             await log.add(
                 action="LOGIN_SUCCESS",
                 entity="USER",
+                user_id=result.user_id,
                 detail=payload.email,
                 ip_address=ip,
             )

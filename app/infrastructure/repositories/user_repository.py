@@ -93,3 +93,7 @@ class SqlUserRepository(IUserRepository):
             return
         user.blocked_at = datetime.now(tz=UTC)
         await self._session.flush()
+
+    async def find_by_cedula(self, cedula: str) -> User | None:
+        result = await self._session.execute(select(User).where(User.cedula == cedula))
+        return result.scalar_one_or_none()

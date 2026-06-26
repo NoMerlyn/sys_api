@@ -51,6 +51,9 @@ htmlcov/
 # Logs
 *.log
 
+# SQLite / test DBs
+*.db
+
 # Postgres data
 postgres_data/
 

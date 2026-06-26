@@ -578,6 +578,11 @@ class ChangeInvoiceStatusHandler:
                 raise BusinessError(f"Transición no permitida: {inv.status} -> {target}")
             # Cancellation restores stock.
             if target == InvoiceStatus.CANCELLED:
+                import json as _json
+
+                from app.infrastructure.db.models.audit_log import AuditLog
+                from app.infrastructure.db.models.stock_movement import StockMovement
+
                 for d in inv.details or []:
                     if d.product_id is None or not d.quantity:
                         continue
@@ -588,8 +593,6 @@ class ChangeInvoiceStatusHandler:
                     p.stock = previous + int(d.quantity)
                     p.version = (p.version or 0) + 1
                     await session.flush()
-                    from app.infrastructure.db.models.stock_movement import StockMovement
-
                     await moves.create(
                         StockMovement(
                             product_id=p.id,
@@ -599,6 +602,25 @@ class ChangeInvoiceStatusHandler:
                             new_stock=int(p.stock or 0),
                             user_id=cmd.actor_id,
                             reference=f"invoice:{inv.id}:cancel",
+                        )
+                    )
+                    session.add(
+                        AuditLog(
+                            action="STOCK_CHANGE",
+                            entity="Product",
+                            entity_id=p.id,
+                            user_id=cmd.actor_id,
+                            detail=_json.dumps(
+                                {
+                                    "motivo": "anulacion_factura",
+                                    "factura_id": inv.id,
+                                    "producto": p.name,
+                                    "cantidad_restituida": int(d.quantity),
+                                    "before": {"stock": previous},
+                                    "after": {"stock": int(p.stock or 0)},
+                                },
+                                ensure_ascii=False,
+                            ),
                         )
                     )
             inv = await invoices.update_status(

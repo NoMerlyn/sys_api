@@ -91,6 +91,12 @@ class CreateUserHandler:
                     f"Username duplicado: {cmd.dto.username}",
                     details={"field": "username"},
                 )
+            if cmd.dto.cedula:
+                if await users.find_by_cedula(cmd.dto.cedula) is not None:
+                    raise BusinessError(
+                        f"Cédula duplicada: {cmd.dto.cedula}",
+                        details={"field": "cedula"},
+                    )
             from app.infrastructure.db.models.user import User
 
             user = User(
@@ -135,8 +141,20 @@ class UpdateUserHandler:
             if cmd.dto.last_name is not None:
                 user.last_name = cmd.dto.last_name
             if cmd.dto.cedula is not None:
+                if cmd.dto.cedula:
+                    existing_cedula = await users.find_by_cedula(cmd.dto.cedula)
+                    if existing_cedula is not None and existing_cedula.id != cmd.user_id:
+                        raise BusinessError(
+                            f"Cédula duplicada: {cmd.dto.cedula}",
+                            details={"field": "cedula"},
+                        )
                 user.cedula = cmd.dto.cedula
             if cmd.dto.email is not None:
+                existing = await users.find_by_email(cmd.dto.email)
+                if existing is not None and existing.id != cmd.user_id:
+                    raise BusinessError(
+                        f"Email duplicado: {cmd.dto.email}", details={"field": "email"}
+                    )
                 user.email = cmd.dto.email
             if cmd.dto.is_active is not None:
                 user.is_active = cmd.dto.is_active
