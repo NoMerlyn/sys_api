@@ -18,14 +18,33 @@ def test_build_workbook_returns_a_valid_xlsx() -> None:
             "by_status": {"CONFIRMED": 3, "DRAFT": 1},
         },
         top_products=[
-            {"product_id": 1, "product_name": "Pen", "quantity": 4, "revenue": 200.0, "invoices": 2},
-            {"product_id": 2, "product_name": "Book", "quantity": 2, "revenue": 100.0, "invoices": 1},
+            {
+                "product_id": 1,
+                "product_name": "Pen",
+                "quantity": 4,
+                "revenue": 200.0,
+                "invoices": 2,
+            },
+            {
+                "product_id": 2,
+                "product_name": "Book",
+                "quantity": 2,
+                "revenue": 100.0,
+                "invoices": 1,
+            },
         ],
         top_clients=[
             {"client_id": 1, "client_name": "Consumidor final", "invoices": 3, "spent": 336.0},
         ],
         top_sellers=[
-            {"user_id": 1, "username": "u1", "name": "S", "last_name": "O", "invoices": 3, "sold": 336.0},
+            {
+                "user_id": 1,
+                "username": "u1",
+                "name": "S",
+                "last_name": "O",
+                "invoices": 3,
+                "sold": 336.0,
+            },
         ],
         by_day=[
             {"day": "2026-01-01", "invoices": 1, "revenue": 112.0},
@@ -36,7 +55,13 @@ def test_build_workbook_returns_a_valid_xlsx() -> None:
     assert blob[:2] == b"PK"
     # The blob should load with openpyxl.
     wb = load_workbook(filename=__import__("io").BytesIO(blob))
-    assert set(wb.sheetnames) == {"Resumen", "Top productos", "Top clientes", "Top vendedores", "Ingresos por día"}
+    assert set(wb.sheetnames) == {
+        "Resumen",
+        "Top productos",
+        "Top clientes",
+        "Top vendedores",
+        "Ingresos por día",
+    }
     # Top productos: row 2 = Pen, row 3 = Book
     top_products = wb["Top productos"]
     assert top_products.cell(row=2, column=1).value == 1

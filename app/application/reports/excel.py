@@ -125,7 +125,7 @@ def build_top_sellers_sheet(wb: Workbook, items: list[dict[str, Any]]) -> None:
     rows = [
         [
             i + 1,
-            f'{item.get("name", "")} {item.get("last_name", "")}'.strip() or "—",
+            f"{item.get('name', '')} {item.get('last_name', '')}".strip() or "—",
             item.get("username", ""),
             int(item.get("invoices", 0)),
             float(item.get("sold", 0)),

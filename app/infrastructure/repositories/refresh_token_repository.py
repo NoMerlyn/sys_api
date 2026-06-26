@@ -62,11 +62,16 @@ class SqlRefreshTokenRepository(RefreshTokenRepository):
 
     async def revoke_all_for_user(self, user_id: int) -> int:
         from sqlalchemy import func, select
+
         # Count first so we can return the number of revoked tokens
         # even though SQLAlchemy 2.x async Result has no rowcount.
-        count_stmt = select(func.count()).select_from(RefreshToken).where(
-            RefreshToken.user_id == user_id,
-            RefreshToken.revoked_at.is_(None),
+        count_stmt = (
+            select(func.count())
+            .select_from(RefreshToken)
+            .where(
+                RefreshToken.user_id == user_id,
+                RefreshToken.revoked_at.is_(None),
+            )
         )
         count = (await self._session.execute(count_stmt)).scalar_one()
         await self._session.execute(

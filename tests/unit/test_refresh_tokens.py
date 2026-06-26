@@ -76,12 +76,17 @@ async def wired() -> AsyncIterator[tuple[RefreshTokenRepository, IUserRepository
         await s.commit()
         user_id = user.id
 
-    yield SqlRefreshTokenRepository.__new__(SqlRefreshTokenRepository), SqlUserRepository.__new__(SqlUserRepository), user_id
+    yield (
+        SqlRefreshTokenRepository.__new__(SqlRefreshTokenRepository),
+        SqlUserRepository.__new__(SqlUserRepository),
+        user_id,
+    )
 
     await session_module.dispose_engine()
     await engine.dispose()
     with contextlib.suppress(FileNotFoundError):
         import os
+
         os.remove(async_url.split("/")[-1])
 
 

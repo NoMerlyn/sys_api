@@ -76,9 +76,7 @@ class RefreshAccessTokenHandler:
         self._refresh = refresh
         self._users = users
 
-    async def handle(
-        self, refresh_token: str, *, ip_address: str | None = None
-    ) -> dict:
+    async def handle(self, refresh_token: str, *, ip_address: str | None = None) -> dict:
         async with uow() as session:
             refresh = self._refresh.__class__(session)  # type: ignore[call-arg]
             row = await refresh.find_active(refresh_token)
@@ -147,6 +145,7 @@ class LogoutAllHandler:
         async with uow() as session:
             refresh = self._refresh.__class__(session)  # type: ignore[call-arg]
             return await refresh.revoke_all_for_user(user_id)
+
 
 # Re-exports (back-compat with the old __init__.py that re-exported
 # every handler from the corresponding module).
