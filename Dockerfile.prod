@@ -23,8 +23,6 @@ RUN pip install --upgrade pip && pip install -e "."
 EXPOSE 8000
 
 # Run schema cleanup, migrations, then start server
-CMD python -c "import psycopg2, os, sys; url = os.environ.get('DATABASE_URL_SYNC') or os.environ.get('DATABASE_URL','').replace('postgresql+asyncpg', 'postgresql+psycopg2'); print('Sync URL derived:', url.split('@')[-1] if '@' in url else url); \
-try: \
-    conn = psycopg2.connect(url); conn.autocommit = True; cur = conn.cursor(); cur.execute('DROP SCHEMA public CASCADE; CREATE SCHEMA public;'); conn.close(); print('DB schema reset OK'); \
-except Exception as e: \
-    print('DB reset failed:', e); sys.exit(1)" && alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
+CMD python -c "import os; \
+script = 'import psycopg2, os, sys\nurl = os.environ.get(\"DATABASE_URL_SYNC\") or os.environ.get(\"DATABASE_URL\", \"\").replace(\"postgresql+asyncpg\", \"postgresql+psycopg2\")\nprint(\"Sync URL derived:\", url.split(\"@\")[-1] if \"@\" in url else url)\ntry:\n    conn = psycopg2.connect(url)\n    conn.autocommit = True\n    cur = conn.cursor()\n    cur.execute(\"DROP SCHEMA public CASCADE; CREATE SCHEMA public;\")\n    conn.close()\n    print(\"DB schema reset OK\")\nexcept Exception as e:\n    print(\"DB reset failed:\", e)\n    sys.exit(1)'; \
+open('reset.py', 'w').write(script)" && python reset.py && rm reset.py && alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
