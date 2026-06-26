@@ -42,22 +42,35 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     logger.info("Starting sys_api (env=%s)", settings.env)
 
     init_engine(settings.database_url)
-    await get_channel_pool(settings.rabbitmq_url)
-    await declare_topology()
 
-    consumer_task = asyncio.create_task(
-        run_invoice_consumer(settings.rabbitmq_url),
-        name="invoice-broker-consumer",
-    )
-    logger.info("invoice-broker-consumer task scheduled")
+    consumer_task = None
+    try:
+        await get_channel_pool(settings.rabbitmq_url)
+        await declare_topology()
+        consumer_task = asyncio.create_task(
+            run_invoice_consumer(settings.rabbitmq_url),
+            name="invoice-broker-consumer",
+        )
+        logger.info("invoice-broker-consumer task scheduled")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "RabbitMQ unavailable at startup (%s). Invoice auto-confirm disabled. "
+            "Set RABBITMQ_URL to enable the broker.",
+            exc,
+        )
 
     try:
         yield
     finally:
-        consumer_task.cancel()
-        await shutdown_channel_pool()
+        if consumer_task is not None:
+            consumer_task.cancel()
+        try:
+            await shutdown_channel_pool()
+        except Exception:  # noqa: BLE001
+            pass
         await dispose_engine()
         logger.info("sys_api shutdown complete")
+
 
 
 def create_app() -> FastAPI:
