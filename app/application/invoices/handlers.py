@@ -408,10 +408,55 @@ async def _auto_confirm_invoice(invoice_id: int) -> None:
     try:
         from app.application.common.uow import uow
         from app.infrastructure.repositories.invoice_repository import SqlInvoiceRepository
+        from app.infrastructure.repositories.product_repository import SqlProductRepository
+        from app.infrastructure.repositories.stock_movement_repository import SqlStockMovementRepository
+        from app.infrastructure.db.models.stock_movement import StockMovement
+        from app.domain.value_objects.movement_type import MovementType
+        from app.infrastructure.db.models.audit_log import AuditLog
+        import json as _json
+
         async with uow() as session:
             repo = SqlInvoiceRepository(session)
+            products = SqlProductRepository(session)
+            moves = SqlStockMovementRepository(session)
+
             inv = await repo.find_by_id(invoice_id)
             if inv is not None and inv.status == InvoiceStatus.PENDING_VALIDATION:
+                # Decrement stock and log movements just like consumer.py does
+                for d in inv.details or []:
+                    if d.product_id is None or not d.quantity:
+                        continue
+                    previous, new_stock = await products.decrement_stock(d.product_id, int(d.quantity))
+                    await moves.create(
+                        StockMovement(
+                            product_id=d.product_id,
+                            type=MovementType.EXIT,
+                            quantity=int(d.quantity),
+                            previous_stock=previous,
+                            new_stock=new_stock,
+                            reference=f"invoice:{invoice_id}:confirmed",
+                        )
+                    )
+                    product_obj = await products.find_by_id(d.product_id)
+                    product_name = product_obj.name if product_obj else f"producto:{d.product_id}"
+                    session.add(
+                        AuditLog(
+                            action="STOCK_CHANGE",
+                            entity="Product",
+                            entity_id=d.product_id,
+                            detail=_json.dumps(
+                                {
+                                    "motivo": "venta",
+                                    "factura_id": invoice_id,
+                                    "producto": product_name,
+                                    "cantidad_vendida": int(d.quantity),
+                                    "before": {"stock": previous},
+                                    "after": {"stock": new_stock},
+                                },
+                                ensure_ascii=False,
+                            ),
+                        )
+                    )
                 await repo.update_status(invoice_id, InvoiceStatus.CONFIRMED)
     except Exception:
         pass
